@@ -19,7 +19,14 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => [
+        'http://localhost:8000',
+        'http://localhost:3000',
+        'https://quickwheels.online',
+        'https://www.quickwheels.online',
+        'http://quickwheels.online',
+        'http://www.quickwheels.online',
+    ],
 
     'allowed_origins_patterns' => [],
 
