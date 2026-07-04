@@ -178,10 +178,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/rides/{id}/cancel', [CustomerDashboardController::class, 'cancelRide']);
         
         // Payments
+        Route::post('/payments', [CustomerPaymentController::class, 'process']);
         Route::get('/payments', [CustomerPaymentController::class, 'index']);
-        Route::get('/payments/accounts', [CustomerPaymentController::class, 'accounts']);
-        Route::post('/payments/clickpesa/init', [CustomerPaymentController::class, 'clickPesaInit']);
-        Route::post('/payments/manual/confirm', [CustomerPaymentController::class, 'confirmManual']);
         Route::get('/payments/{id}', [CustomerPaymentController::class, 'show']);
         
         // Reviews
@@ -242,10 +240,6 @@ Route::get('/site-content', [SiteContentController::class, 'index']);
 Route::middleware('auth:sanctum')->prefix('owner')->group(function () {
     Route::put('/site-content', [SiteContentController::class, 'update']);
 });
-
-// ==================== CLICKPESA WEBHOOK ====================
-Route::post('/payments/clickpesa/webhook', [CustomerPaymentController::class, 'webhook'])
-    ->name('customer.payments.clickpesa.webhook');
 
 // ==================== USER ROUTE ====================
 Route::get('/user', function (Request $request) {
