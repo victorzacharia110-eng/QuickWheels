@@ -337,7 +337,7 @@ class Employee extends Model
         }
 
         $this->vehicle_id = $vehicleId;
-        $this->vehicle_name = $vehicle->make . ' ' . $vehicle->model;
+        $this->vehicle_name = $vehicle->name;
         $this->save();
 
         // Update vehicle status

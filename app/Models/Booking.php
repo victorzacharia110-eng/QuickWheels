@@ -671,7 +671,7 @@ class Booking extends Model
             'customer_name' => $this->customer?->name,
             'customer_phone' => $this->customer?->phone,
             'vehicle_id' => $this->vehicle_id,
-            'vehicle_name' => $this->vehicle?->name ?? ($this->vehicle?->make ? $this->vehicle?->make . ' ' . $this->vehicle?->model : null),
+            'vehicle_name' => $this->vehicle?->name ?? null,
             'vehicle_type' => $this->vehicle?->type,
             'owner_id' => $this->owner_id,
             'owner_name' => $this->owner?->business_name,

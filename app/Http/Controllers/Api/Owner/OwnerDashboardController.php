@@ -118,7 +118,7 @@ class OwnerDashboardController extends Controller
                     'id' => $booking->id,
                     'booking_number' => $booking->booking_number,
                     'customer_name' => $booking->customer?->name,
-                    'vehicle_name' => $booking->vehicle?->make . ' ' . $booking->vehicle?->model,
+                    'vehicle_name' => $booking->vehicle?->name,
                     'total_amount' => $booking->total_amount,
                     'total_amount_formatted' => 'TSh ' . number_format($booking->total_amount, 0),
                     'status' => $booking->status,
@@ -172,7 +172,7 @@ class OwnerDashboardController extends Controller
             ->map(function($vehicle) {
                 return [
                     'id' => $vehicle->id,
-                    'name' => $vehicle->make . ' ' . $vehicle->model,
+                    'name' => $vehicle->name,
                     'type' => $vehicle->type,
                     'registration_number' => $vehicle->registration_number,
                     'total_bookings' => $vehicle->total_bookings ?? 0,
@@ -296,7 +296,7 @@ class OwnerDashboardController extends Controller
             $activities[] = [
                 'type' => 'booking',
                 'icon' => 'fa-solid fa-calendar-check',
-                'message' => "New booking #{$booking->booking_number} from {$booking->customer?->name} for {$booking->vehicle?->make} {$booking->vehicle?->model}",
+                'message' => "New booking #{$booking->booking_number} from {$booking->customer?->name} for {$booking->vehicle?->name}",
                 'status' => $booking->status,
                 'status_label' => $booking->status_label,
                 'status_color' => $booking->status_color,
@@ -394,7 +394,7 @@ class OwnerDashboardController extends Controller
             ->map(function($vehicle) {
                 return [
                     'id' => $vehicle->id,
-                    'name' => $vehicle->make . ' ' . $vehicle->model,
+                    'name' => $vehicle->name,
                     'type' => $vehicle->type,
                     'registration_number' => $vehicle->registration_number,
                     'total_bookings' => $vehicle->total_bookings ?? 0,
@@ -422,7 +422,7 @@ class OwnerDashboardController extends Controller
                     'booking_number' => $booking->booking_number,
                     'customer_name' => $booking->customer?->name,
                     'customer_phone' => $booking->customer?->phone,
-                    'vehicle_name' => $booking->vehicle?->make . ' ' . $booking->vehicle?->model,
+                    'vehicle_name' => $booking->vehicle?->name,
                     'total_amount' => $booking->total_amount,
                     'total_amount_formatted' => 'TSh ' . number_format($booking->total_amount, 0),
                     'status' => $booking->status,
