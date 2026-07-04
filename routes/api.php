@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\Contracts\ContractTemplateController;
 use App\Http\Controllers\Api\GpsController;
 use App\Http\Controllers\Api\ContractPdfController;
 use App\Http\Controllers\Api\SiteContentController;
+use App\Http\Controllers\Api\SuperAdminController;
 
 /*
 |--------------------------------------------------------------------------
@@ -39,6 +40,7 @@ Route::prefix('auth')->group(function () {
         Route::put('/profile', [AuthController::class, 'updateProfile']);
         Route::patch('/update-nida', [AuthController::class, 'updateNida']);
         Route::post('/change-password', [AuthController::class, 'changePassword']);
+        Route::put('/owner/profile', [AuthController::class, 'updateOwnerProfile']);
     });
 });
 
@@ -243,3 +245,15 @@ Route::middleware('auth:sanctum')->prefix('owner')->group(function () {
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+// ==================== SUPERADMIN ROUTES ====================
+Route::middleware('auth:sanctum')->prefix('superadmin')->group(function () {
+    Route::get('/dashboard', [SuperAdminController::class, 'dashboard']);
+    Route::get('/owners', [SuperAdminController::class, 'index']);
+    Route::get('/owners/{id}', [SuperAdminController::class, 'show']);
+    Route::put('/owners/{id}', [SuperAdminController::class, 'update']);
+    Route::post('/owners/{id}/toggle-verification', [SuperAdminController::class, 'toggleVerification']);
+    Route::post('/owners/{id}/toggle-status', [SuperAdminController::class, 'toggleUserStatus']);
+    Route::delete('/owners/{id}', [SuperAdminController::class, 'destroy']);
+    Route::get('/stats', [SuperAdminController::class, 'stats']);
+});

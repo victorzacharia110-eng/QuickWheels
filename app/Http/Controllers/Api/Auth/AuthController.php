@@ -27,7 +27,7 @@ class AuthController extends Controller
             'password' => 'required|string|min:8|confirmed',
             'phone' => 'nullable|string|max:20',
             'phone_number' => 'nullable|string|max:20',
-            'role' => 'nullable|in:owner,employee,customer',
+            'role' => 'nullable|in:superadmin,owner,employee,customer',
             // Owner specific
             'business_name' => 'required_if:role,owner|string|max:255',
             'business_license' => 'required_if:role,owner|string|unique:owners,business_license',
@@ -321,6 +321,60 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Password changed successfully'
+        ]);
+    }
+
+    /**
+     * Update owner business profile
+     * PUT /api/owner/profile
+     */
+    public function updateOwnerProfile(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user->isOwner()) {
+            return response()->json(['success' => false, 'message' => 'Only owners can update business profile'], 403);
+        }
+
+        $owner = $user->owner;
+        if (!$owner) {
+            return response()->json(['success' => false, 'message' => 'Owner profile not found'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'business_name' => 'sometimes|string|max:255',
+            'business_address' => 'sometimes|string',
+            'business_phone' => 'sometimes|string|max:20',
+            'business_email' => 'sometimes|email|max:255',
+            'business_website' => 'nullable|string|max:255',
+            'business_description' => 'nullable|string',
+            'name' => 'sometimes|string|max:255',
+            'phone' => 'sometimes|string|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Update user fields
+        $user->update($request->only(['name', 'phone']));
+
+        // Update owner fields
+        $owner->update($request->only([
+            'business_name', 'business_address', 'business_phone',
+            'business_email', 'business_website', 'business_description',
+        ]));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile updated successfully',
+            'data' => [
+                'user' => $user->fresh()->toApiResponse(),
+            ],
         ]);
     }
 
