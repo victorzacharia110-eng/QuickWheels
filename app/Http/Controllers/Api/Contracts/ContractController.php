@@ -52,6 +52,7 @@ class ContractController extends Controller
             'data' => $contracts,
         ]);
     }
+    
 
     public function store(Request $request)
     {
