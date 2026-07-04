@@ -130,6 +130,7 @@ class VehicleController extends Controller
             'registration' => 'sometimes|string|max:50',
             'year' => 'nullable|integer|min:1990|max:' . (date('Y') + 1),
             'price' => 'nullable|numeric|min:0',
+            'status' => 'sometimes|in:available,on_contract,maintenance,rented,assigned',
             'description' => 'nullable|string',
             'image' => 'nullable|string',
             'tags' => 'nullable|array',
