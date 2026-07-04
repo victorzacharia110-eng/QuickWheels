@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Employee;
 use App\Http\Controllers\Controller;
 use App\Models\Contract;
 use App\Models\Employee;
+use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -46,12 +47,18 @@ class EmployeeDashboardController extends Controller
         }
 
         $employees = Employee::where('owner_id', $ownerId)
+            ->with('vehicle')  // Load the vehicle relationship
             ->latest()
             ->get();
 
         return response()->json([
             'success' => true,
-            'data' => $employees->map(fn($e) => $e->toApiResponse()),
+            'data' => $employees->map(function($employee) {
+                $data = $employee->toApiResponse();
+                // Ensure vehicle_name is included
+                $data['vehicle_name'] = $employee->vehicle ? $employee->vehicle->name : null;
+                return $data;
+            }),
         ]);
     }
 
@@ -81,6 +88,7 @@ class EmployeeDashboardController extends Controller
             'position' => 'nullable|string|max:100',
             'salary' => 'nullable|numeric|min:0',
             'shift' => 'nullable|string|max:50',
+            'vehicle_id' => 'nullable|exists:vehicles,id',
         ]);
 
         if ($validator->fails()) {
@@ -97,6 +105,10 @@ class EmployeeDashboardController extends Controller
 
         try {
             $employee = Employee::create($data);
+
+            if (!empty($data['vehicle_id'])) {
+                $employee->assignVehicle($data['vehicle_id']);
+            }
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -107,14 +119,14 @@ class EmployeeDashboardController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Employee created successfully',
-            'data' => $employee->toApiResponse(),
+            'data' => $employee->fresh()->toApiResponseWithVehicle(),
         ], 201);
     }
 
     public function show(Request $request, $id)
     {
         $ownerId = $request->user()->owner?->id;
-        $employee = Employee::where('owner_id', $ownerId)->find($id);
+        $employee = Employee::where('owner_id', $ownerId)->with('vehicle')->find($id);
 
         if (!$employee) {
             return response()->json([
@@ -125,7 +137,7 @@ class EmployeeDashboardController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $employee->toApiResponse(),
+            'data' => $this->formatEmployeeWithVehicle($employee),
         ]);
     }
 
@@ -152,6 +164,7 @@ class EmployeeDashboardController extends Controller
             'position' => 'nullable|string|max:100',
             'salary' => 'nullable|numeric|min:0',
             'shift' => 'nullable|string|max:50',
+            'vehicle_id' => 'nullable|exists:vehicles,id',
         ]);
 
         if ($validator->fails()) {
@@ -162,12 +175,24 @@ class EmployeeDashboardController extends Controller
             ], 422);
         }
 
-        $employee->update($validator->validated());
+        $data = $validator->validated();
+        
+        // Handle vehicle assignment
+        if (isset($data['vehicle_id'])) {
+            if ($data['vehicle_id']) {
+                $employee->assignVehicle($data['vehicle_id']);
+            } else {
+                $employee->removeVehicle();
+            }
+            unset($data['vehicle_id']);
+        }
+
+        $employee->update($data);
 
         return response()->json([
             'success' => true,
             'message' => 'Employee updated successfully',
-            'data' => $employee->fresh()->toApiResponse(),
+            'data' => $this->formatEmployeeWithVehicle($employee->fresh()->load('vehicle')),
         ]);
     }
 
@@ -208,7 +233,7 @@ class EmployeeDashboardController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Employee status toggled successfully',
-            'data' => $employee->fresh()->toApiResponse(),
+            'data' => $this->formatEmployeeWithVehicle($employee->fresh()->load('vehicle')),
         ]);
     }
 
@@ -248,7 +273,7 @@ class EmployeeDashboardController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Vehicle assigned successfully',
-            'data' => $employee->fresh()->toApiResponse(),
+            'data' => $this->formatEmployeeWithVehicle($employee->fresh()->load('vehicle')),
         ]);
     }
 
@@ -269,7 +294,7 @@ class EmployeeDashboardController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Vehicle removed from employee successfully',
-            'data' => $employee->fresh()->toApiResponse(),
+            'data' => $this->formatEmployeeWithVehicle($employee->fresh()->load('vehicle')),
         ]);
     }
 
@@ -306,7 +331,7 @@ class EmployeeDashboardController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $employees->map(fn($e) => $e->toApiResponse()),
+            'data' => $employees->map(fn($e) => $this->formatEmployeeWithVehicle($e)),
         ]);
     }
 
@@ -320,7 +345,7 @@ class EmployeeDashboardController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $employees->map(fn($e) => $e->toApiResponse()),
+            'data' => $employees->map(fn($e) => $this->formatEmployeeWithVehicle($e)),
         ]);
     }
 
@@ -329,13 +354,14 @@ class EmployeeDashboardController extends Controller
         $ownerId = $request->user()->owner?->id;
         $employee = Employee::where('owner_id', $ownerId)
             ->where('email', $email)
+            ->with('vehicle')
             ->first();
 
         if (!$employee) {
             return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
         }
 
-        return response()->json(['success' => true, 'data' => $employee->toApiResponse()]);
+        return response()->json(['success' => true, 'data' => $this->formatEmployeeWithVehicle($employee)]);
     }
 
     public function getByName(Request $request, $name)
@@ -343,20 +369,21 @@ class EmployeeDashboardController extends Controller
         $ownerId = $request->user()->owner?->id;
         $employee = Employee::where('owner_id', $ownerId)
             ->where('name', 'like', "%{$name}%")
+            ->with('vehicle')
             ->first();
 
         if (!$employee) {
             return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
         }
 
-        return response()->json(['success' => true, 'data' => $employee->toApiResponse()]);
+        return response()->json(['success' => true, 'data' => $this->formatEmployeeWithVehicle($employee)]);
     }
 
     public function dashboard(Request $request)
     {
         $ownerId = $request->user()->owner?->id;
 
-        $employees = Employee::where('owner_id', $ownerId)->get();
+        $employees = Employee::where('owner_id', $ownerId)->with('vehicle')->get();
 
         return response()->json([
             'success' => true,
@@ -368,8 +395,21 @@ class EmployeeDashboardController extends Controller
                     'with_vehicles' => $employees->whereNotNull('vehicle_id')->count(),
                     'without_vehicles' => $employees->whereNull('vehicle_id')->count(),
                 ],
-                'employees' => $employees->map(fn($e) => $e->toApiResponse()),
+                'employees' => $employees->map(fn($e) => $this->formatEmployeeWithVehicle($e)),
             ],
         ]);
+    }
+
+    // ==================== HELPER METHODS ====================
+
+    /**
+     * Format employee data with vehicle information
+     */
+    private function formatEmployeeWithVehicle($employee)
+    {
+        $data = $employee->toApiResponse();
+        $data['vehicle_id'] = $employee->vehicle_id;
+        $data['vehicle_name'] = $employee->vehicle ? $employee->vehicle->name : null;
+        return $data;
     }
 }
