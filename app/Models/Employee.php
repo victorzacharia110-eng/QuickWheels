@@ -307,9 +307,9 @@ class Employee extends Model
     public function generateEmployeeId()
     {
         $year = date('Y');
-        $lastEmployee = self::whereYear('created_at', $year)
+        $lastEmployee = self::where('employee_id', 'LIKE', 'EMP-' . $year . '-%')
             ->whereNotNull('employee_id')
-            ->orderBy('id', 'desc')
+            ->orderByRaw('LENGTH(employee_id) DESC, employee_id DESC')
             ->first();
         
         $number = $lastEmployee ? intval(substr($lastEmployee->employee_id, -4)) + 1 : 1;
