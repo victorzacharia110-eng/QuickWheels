@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Api\Employee;
 use App\Http\Controllers\Controller;
 use App\Models\Contract;
 use App\Models\Employee;
+use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class EmployeeDashboardController extends Controller
 {
@@ -71,7 +74,7 @@ class EmployeeDashboardController extends Controller
 
         $input = $request->all();
         // Convert empty strings to null for nullable fields
-        foreach (['phone', 'email', 'address', 'nida_number', 'license_number', 'department', 'position', 'salary', 'shift'] as $field) {
+        foreach (['phone', 'address', 'nida_number', 'license_number', 'department', 'position', 'salary', 'shift'] as $field) {
             if (isset($input[$field]) && $input[$field] === '') {
                 $input[$field] = null;
             }
@@ -79,8 +82,9 @@ class EmployeeDashboardController extends Controller
 
         $validator = Validator::make($input, [
             'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email|unique:employees,email',
             'phone' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255|unique:employees,email',
+            'password' => 'nullable|string|min:8',
             'address' => 'nullable|string',
             'nida_number' => 'nullable|string|max:20|unique:employees,nida_number',
             'license_number' => 'nullable|string|max:50|unique:employees,license_number',
@@ -100,26 +104,55 @@ class EmployeeDashboardController extends Controller
         }
 
         $data = $validator->validated();
-        $data['owner_id'] = $ownerId;
-        $data['status'] = 'active';
+
+        // Generate password if not provided
+        $plainPassword = $data['password'] ?? Str::random(10);
+
+        // Create User account so the employee can log in
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($plainPassword),
+            'phone' => $data['phone'],
+            'role' => 'employee',
+            'is_active' => true,
+        ]);
 
         try {
-            $employee = Employee::create($data);
+            $employee = Employee::create([
+                'name' => $data['name'],
+                'phone' => $data['phone'],
+                'email' => $data['email'],
+                'address' => $data['address'] ?? null,
+                'nida_number' => $data['nida_number'] ?? null,
+                'license_number' => $data['license_number'] ?? null,
+                'department' => $data['department'] ?? null,
+                'position' => $data['position'] ?? null,
+                'salary' => $data['salary'] ?? null,
+                'shift' => $data['shift'] ?? null,
+                'owner_id' => $ownerId,
+                'user_id' => $user->id,
+                'status' => 'active',
+            ]);
 
             if (!empty($data['vehicle_id'])) {
                 $employee->assignVehicle($data['vehicle_id']);
             }
         } catch (\Exception $e) {
+            $user->delete();
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create employee: ' . $e->getMessage(),
             ], 500);
         }
 
+        $responseData = $this->formatEmployeeWithVehicle($employee->fresh()->load('vehicle'));
+        $responseData['password'] = $plainPassword;
+
         return response()->json([
             'success' => true,
             'message' => 'Employee created successfully',
-            'data' => $employee->fresh()->toApiResponseWithVehicle(),
+            'data' => $responseData,
         ], 201);
     }
 
@@ -156,7 +189,8 @@ class EmployeeDashboardController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|string|max:255',
             'phone' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255|unique:employees,email,' . $id,
+            'email' => 'nullable|email|max:255|unique:users,email,' . ($employee->user_id ?? 'NULL') . '|unique:employees,email,' . $id,
+            'password' => 'nullable|string|min:8',
             'address' => 'nullable|string',
             'nida_number' => 'nullable|string|max:20|unique:employees,nida_number,' . $id,
             'license_number' => 'nullable|string|max:50|unique:employees,license_number,' . $id,
@@ -189,6 +223,18 @@ class EmployeeDashboardController extends Controller
 
         $employee->update($data);
 
+        // Sync changes to the User account
+        if ($employee->user_id) {
+            $userData = [];
+            if (isset($data['name'])) $userData['name'] = $data['name'];
+            if (isset($data['email'])) $userData['email'] = $data['email'];
+            if (isset($data['phone'])) $userData['phone'] = $data['phone'];
+            if (isset($data['password'])) $userData['password'] = Hash::make($data['password']);
+            if (!empty($userData)) {
+                User::where('id', $employee->user_id)->update($userData);
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Employee updated successfully',
@@ -208,7 +254,13 @@ class EmployeeDashboardController extends Controller
             ], 404);
         }
 
+        $userId = $employee->user_id;
         $employee->delete();
+
+        // Also delete the user account so the employee can't log in
+        if ($userId) {
+            User::where('id', $userId)->delete();
+        }
 
         return response()->json([
             'success' => true,

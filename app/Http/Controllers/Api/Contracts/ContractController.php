@@ -88,7 +88,10 @@ class ContractController extends Controller
             return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
         }
 
-        $data['driver_id'] = $employee->user_id;
+        if ($employee->user_id) {
+            $data['driver_id'] = $employee->user_id;
+        }
+        $data['employee_id'] = $employee->id;
         $data['driver_name'] = $employee->name;
         $data['driver_phone'] = $employee->phone;
         $data['driver_email'] = $employee->email ?? null;
