@@ -308,6 +308,7 @@ class Employee extends Model
     {
         $year = date('Y');
         $lastEmployee = self::whereYear('created_at', $year)
+            ->whereNotNull('employee_id')
             ->orderBy('id', 'desc')
             ->first();
         

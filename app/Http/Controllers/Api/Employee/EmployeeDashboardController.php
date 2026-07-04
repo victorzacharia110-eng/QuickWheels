@@ -62,7 +62,15 @@ class EmployeeDashboardController extends Controller
             return response()->json(['success' => false, 'message' => 'Owner profile not found'], 403);
         }
 
-        $validator = Validator::make($request->all(), [
+        $input = $request->all();
+        // Convert empty strings to null for nullable fields
+        foreach (['phone', 'email', 'address', 'nida_number', 'license_number', 'department', 'position', 'salary', 'shift'] as $field) {
+            if (isset($input[$field]) && $input[$field] === '') {
+                $input[$field] = null;
+            }
+        }
+
+        $validator = Validator::make($input, [
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255|unique:employees,email',
@@ -87,7 +95,14 @@ class EmployeeDashboardController extends Controller
         $data['owner_id'] = $ownerId;
         $data['status'] = 'active';
 
-        $employee = Employee::create($data);
+        try {
+            $employee = Employee::create($data);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create employee: ' . $e->getMessage(),
+            ], 500);
+        }
 
         return response()->json([
             'success' => true,
