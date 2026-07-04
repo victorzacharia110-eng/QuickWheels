@@ -32,7 +32,7 @@ return new class extends Migration
             $table->string('vehicle_name')->nullable();
             
             // Employee Details
-            $table->string('employee_id')->nullable()->unique();
+            $table->string('employee_id')->nullable();
             $table->string('department')->nullable();
             $table->string('position')->nullable();
             $table->decimal('salary', 10, 2)->nullable();
