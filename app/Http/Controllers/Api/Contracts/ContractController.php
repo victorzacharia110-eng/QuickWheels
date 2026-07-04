@@ -56,7 +56,7 @@ class ContractController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'driver_id' => 'required|exists:users,id',
+            'employee_id' => 'required|exists:employees,id',
             'vehicle_id' => 'required|exists:vehicles,id',
             'contract_type' => 'required|in:hire_purchase,rental',
             'payment_frequency' => 'required|in:daily,weekly,monthly',
@@ -76,7 +76,7 @@ class ContractController extends Controller
         }
 
         $data = $validator->validated();
-        $driver = \App\Models\User::find($data['driver_id']);
+        $employee = \App\Models\Employee::find($data['employee_id']);
         $vehicle = \App\Models\Vehicle::find($data['vehicle_id']);
         $owner = $request->user()->owner;
 
@@ -84,9 +84,14 @@ class ContractController extends Controller
             return response()->json(['success' => false, 'message' => 'Owner profile not found'], 400);
         }
 
-        $data['driver_name'] = $driver->name;
-        $data['driver_phone'] = $driver->phone;
-        $data['driver_email'] = $driver->email ?? null;
+        if (!$employee) {
+            return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
+        }
+
+        $data['driver_id'] = $employee->user_id;
+        $data['driver_name'] = $employee->name;
+        $data['driver_phone'] = $employee->phone;
+        $data['driver_email'] = $employee->email ?? null;
         $data['vehicle_name'] = $vehicle->name;
         $data['vehicle_type'] = $vehicle->type;
         $data['vehicle_registration'] = $vehicle->registration;
