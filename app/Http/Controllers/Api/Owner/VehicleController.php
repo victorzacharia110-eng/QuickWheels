@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api\Owner;
 
 use App\Http\Controllers\Controller;
+use App\Models\Maintenance;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class VehicleController extends Controller
 {
@@ -128,6 +130,8 @@ class VehicleController extends Controller
             'description' => 'nullable|string',
             'image' => 'nullable|string',
             'tags' => 'nullable|array',
+            'next_service_date' => 'nullable|date|after_or_equal:today',
+            'next_service_notes' => 'nullable|string|max:1000',
         ]);
 
         if ($validator->fails()) {
@@ -222,5 +226,58 @@ class VehicleController extends Controller
             'success' => true,
             'data' => Vehicle::getStats($ownerId),
         ]);
+    }
+
+    public function scheduleService(Request $request, $id)
+    {
+        $vehicle = Vehicle::find($id);
+        if (!$vehicle) {
+            return response()->json(['success' => false, 'message' => 'Vehicle not found'], 404);
+        }
+
+        $ownerId = $request->user()->owner->id;
+        if ($vehicle->owner_id !== $ownerId) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'service_date' => 'required|date|after_or_equal:today',
+            'technician_id' => 'nullable|exists:employees,id',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $validator->errors()], 422);
+        }
+
+        $data = $validator->validated();
+
+        $vehicle->update([
+            'next_service_date' => $data['service_date'],
+            'next_service_notes' => $data['notes'] ?? null,
+        ]);
+
+        $report = Maintenance::create([
+            'report_number' => 'MT-' . date('Y') . '-' . str_pad(Maintenance::whereYear('created_at', date('Y'))->count() + 1, 3, '0', STR_PAD_LEFT),
+            'employee_id' => $data['technician_id'] ?? $vehicle->technician?->id,
+            'vehicle_id' => $vehicle->id,
+            'owner_id' => $ownerId,
+            'title' => 'Scheduled Service — ' . $vehicle->name,
+            'description' => $data['notes'] ?? 'Scheduled maintenance service for ' . $vehicle->name,
+            'priority' => 'medium',
+            'status' => 'pending',
+            'vehicle_mileage' => $vehicle->mileage,
+            'next_service_date' => $data['service_date'],
+            'notes' => $data['notes'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Service scheduled and maintenance report created',
+            'data' => [
+                'vehicle' => $vehicle->fresh()->toApiResponse(),
+                'report' => $report->toApiResponse(),
+            ],
+        ], 201);
     }
 }

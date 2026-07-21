@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\Contracts\ContractController;
 use App\Http\Controllers\Api\Contracts\ContractController as ContractsContractController;
 use App\Http\Controllers\Api\Contracts\ContractTemplateController;
 use App\Http\Controllers\Api\GpsController;
+use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\ContractPdfController;
 use App\Http\Controllers\Api\SiteContentController;
 use App\Http\Controllers\Api\SuperAdminController;
@@ -73,6 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/vehicles/{id}', [VehicleController::class, 'update']);
         Route::delete('/vehicles/{id}', [VehicleController::class, 'destroy']);
         Route::patch('/vehicles/{id}/status', [VehicleController::class, 'updateStatus']);
+        Route::post('/vehicles/{id}/schedule-service', [VehicleController::class, 'scheduleService']);
         Route::get('/vehicles/stats', [VehicleController::class, 'stats']);
         
         // Bookings
@@ -162,6 +164,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/gps/all-latest', [GpsController::class, 'getAllLatest']);
     });
     
+    // ==================== MESSAGES ====================
+    Route::get('/messages', [MessageController::class, 'index']);
+    Route::post('/messages', [MessageController::class, 'store']);
+    Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
+    Route::get('/messages/contacts', [MessageController::class, 'contacts']);
+
     // ==================== EMPLOYEE ROUTES ====================
     Route::prefix('employee')->group(function () {
         

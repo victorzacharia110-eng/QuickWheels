@@ -34,10 +34,13 @@ class Vehicle extends Model
         'monthly_rate',
         'insurance_required',
         'is_active',
+        'next_service_date',
+        'next_service_notes',
     ];
 
     protected $casts = [
         'year' => 'integer',
+        'next_service_date' => 'date',
         'price' => 'decimal:2',
         'daily_rate' => 'decimal:2',
         'weekly_rate' => 'decimal:2',
@@ -69,6 +72,11 @@ class Vehicle extends Model
     public function employees()
     {
         return $this->hasMany(Employee::class);
+    }
+
+    public function technician()
+    {
+        return $this->hasOne(Employee::class)->where('position', 'Technician');
     }
 
     public function reviews()

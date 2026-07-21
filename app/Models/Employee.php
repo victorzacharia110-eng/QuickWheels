@@ -32,6 +32,9 @@ class Employee extends Model
         'permissions',
         'supervisor_id',
         'profile_image',
+        'workshop_address',
+        'workshop_latitude',
+        'workshop_longitude',
     ];
 
     protected $casts = [
@@ -496,6 +499,9 @@ class Employee extends Model
             'permissions' => $this->permissions,
             'supervisor_id' => $this->supervisor_id,
             'profile_image' => $this->profile_image,
+            'workshop_address' => $this->workshop_address,
+            'workshop_latitude' => $this->workshop_latitude,
+            'workshop_longitude' => $this->workshop_longitude,
             'documents_count' => $this->relationLoaded('documents') ? $this->documents->count() : $this->documents()->count(),
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
