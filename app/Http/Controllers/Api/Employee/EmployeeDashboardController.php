@@ -50,7 +50,7 @@ class EmployeeDashboardController extends Controller
         }
 
         $employees = Employee::where('owner_id', $ownerId)
-            ->with('vehicle')  // Load the vehicle relationship
+            ->with(['vehicle', 'documents'])  // Load vehicle and documents relationships
             ->latest()
             ->get();
 

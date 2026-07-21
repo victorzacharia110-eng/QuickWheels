@@ -496,7 +496,7 @@ class Employee extends Model
             'permissions' => $this->permissions,
             'supervisor_id' => $this->supervisor_id,
             'profile_image' => $this->profile_image,
-            'documents_count' => $this->documents()->count(),
+            'documents_count' => $this->relationLoaded('documents') ? $this->documents->count() : $this->documents()->count(),
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
         ];
