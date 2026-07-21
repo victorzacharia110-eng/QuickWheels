@@ -156,11 +156,11 @@ PROMPT;
 
     private function sanitizeUtf8($data)
     {
-        if (is_string($data)) {
-            return @iconv('UTF-8', 'UTF-8//IGNORE', $data) ?? $data;
-        }
-        if (is_array($data)) {
-            return array_map([$this, 'sanitizeUtf8'], $data);
+        if (is_string($data) || is_array($data)) {
+            $json = json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE);
+            if ($json !== false) {
+                return json_decode($json, is_array($data));
+            }
         }
         return $data;
     }
