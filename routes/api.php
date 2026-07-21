@@ -134,6 +134,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/contracts/stats', [ContractsContractController::class, 'stats']);
         Route::get('/contracts/dashboard', [ContractsContractController::class, 'dashboard']);
         Route::get('/contracts/driver/{driverId}', [ContractsContractController::class, 'getByDriver']);
+
+        // Contract Documents
+        Route::get('/contracts/{contractId}/documents', [ContractsContractController::class, 'listDocuments']);
+        Route::post('/contracts/{contractId}/documents', [ContractsContractController::class, 'uploadDocument']);
+        Route::get('/contracts/{contractId}/documents/{documentId}/download', [ContractsContractController::class, 'downloadDocument']);
+        Route::delete('/contracts/{contractId}/documents/{documentId}', [ContractsContractController::class, 'deleteDocument']);
+        Route::patch('/contracts/{contractId}/documents/{documentId}/verify', [ContractsContractController::class, 'verifyDocument']);
+        Route::post('/contracts/{contractId}/documents/{documentId}/analyze', [ContractsContractController::class, 'analyzeDocument']);
         
         // Payments
         Route::get('/payments', [PaymentController::class, 'index']);

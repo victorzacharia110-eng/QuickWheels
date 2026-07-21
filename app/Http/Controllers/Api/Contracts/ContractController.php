@@ -4,8 +4,12 @@ namespace App\Http\Controllers\Api\Contracts;
 
 use App\Http\Controllers\Controller;
 use App\Models\Contract;
+use App\Models\ContractDocument;
 use App\Models\Payment;
+use App\Services\GeminiService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 
 class ContractController extends Controller
@@ -480,5 +484,157 @@ class ContractController extends Controller
             'message' => 'Contract download prepared',
             'data' => $pdfData,
         ]);
+    }
+
+    // ==================== DOCUMENT UPLOAD ====================
+
+    public function listDocuments(Request $request, $id)
+    {
+        $contract = Contract::find($id);
+        if (!$contract) {
+            return response()->json(['success' => false, 'message' => 'Contract not found'], 404);
+        }
+
+        $documents = ContractDocument::where('contract_id', $id)
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn($d) => $d->toApiResponse());
+
+        return response()->json(['success' => true, 'data' => $documents]);
+    }
+
+    public function uploadDocument(Request $request, $id)
+    {
+        $contract = Contract::find($id);
+        if (!$contract) {
+            return response()->json(['success' => false, 'message' => 'Contract not found'], 404);
+        }
+
+        $request->validate([
+            'file' => 'required|file|max:20480|mimes:pdf,jpg,jpeg,png,doc,docx',
+            'document_type' => 'required|string|in:signed_contract,agreement,addendum,insurance,receipt,other',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        $file = $request->file('file');
+        $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('documents/contracts/' . $contract->id, $filename, 'public');
+
+        $document = ContractDocument::create([
+            'contract_id' => $contract->id,
+            'owner_id' => $contract->owner_id,
+            'document_type' => $request->document_type,
+            'title' => $request->title,
+            'description' => $request->description,
+            'file_path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'file_mime_type' => $file->getMimeType(),
+            'file_size' => $file->getSize(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document uploaded successfully',
+            'data' => $document->toApiResponse(),
+        ], 201);
+    }
+
+    public function downloadDocument(Request $request, $contractId, $documentId)
+    {
+        $document = ContractDocument::where('contract_id', $contractId)->find($documentId);
+        if (!$document) {
+            return response()->json(['success' => false, 'message' => 'Document not found'], 404);
+        }
+        return Storage::disk('public')->download($document->file_path, $document->file_name);
+    }
+
+    public function deleteDocument(Request $request, $contractId, $documentId)
+    {
+        $document = ContractDocument::where('contract_id', $contractId)->find($documentId);
+        if (!$document) {
+            return response()->json(['success' => false, 'message' => 'Document not found'], 404);
+        }
+        Storage::disk('public')->delete($document->file_path);
+        $document->delete();
+        return response()->json(['success' => true, 'message' => 'Document deleted']);
+    }
+
+    public function verifyDocument(Request $request, $contractId, $documentId)
+    {
+        $document = ContractDocument::where('contract_id', $contractId)->find($documentId);
+        if (!$document) {
+            return response()->json(['success' => false, 'message' => 'Document not found'], 404);
+        }
+        $document->update(['is_verified' => !$document->is_verified]);
+        return response()->json([
+            'success' => true,
+            'message' => $document->is_verified ? 'Document verified' : 'Verification removed',
+            'data' => $document->toApiResponse(),
+        ]);
+    }
+
+    public function analyzeDocument(Request $request, $contractId, $documentId)
+    {
+        $document = ContractDocument::where('contract_id', $contractId)->find($documentId);
+        if (!$document) {
+            return response()->json(['success' => false, 'message' => 'Document not found'], 404);
+        }
+
+        $mime = $document->file_mime_type;
+        $isImage = str_starts_with($mime, 'image/');
+        $isPdf = $mime === 'application/pdf';
+
+        $gemini = app(GeminiService::class);
+        $analysis = null;
+
+        if ($isImage) {
+            $fullPath = Storage::disk('public')->path($document->file_path);
+            $imageData = base64_encode(file_get_contents($fullPath));
+            $analysis = $gemini->analyzeDocumentImage($imageData, $mime);
+        } elseif ($isPdf) {
+            $fullPath = Storage::disk('public')->path($document->file_path);
+            $text = $this->extractPdfText($fullPath);
+            if (!empty($text)) {
+                $analysis = $gemini->analyzeContract($text);
+            } else {
+                $analysis = ['error' => 'Could not extract text from PDF. Try uploading an image instead.'];
+            }
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'AI analysis is only available for image and PDF files',
+            ], 422);
+        }
+
+        if (isset($analysis['error'])) {
+            return response()->json(['success' => false, 'message' => $analysis['error']], 422);
+        }
+
+        $document->update(['ai_analysis' => $analysis, 'ai_analyzed_at' => now(), 'is_verified' => true]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document analyzed successfully',
+            'data' => ['document' => $document->toApiResponse(), 'analysis' => $analysis],
+        ]);
+    }
+
+    protected function extractPdfText(string $path): string
+    {
+        try {
+            $content = file_get_contents($path);
+            $text = '';
+            if (preg_match_all('/BT\s*.*?\s*ET/s', $content, $matches)) {
+                foreach ($matches[0] as $block) {
+                    if (preg_match_all('/\((.*?)\)/s', $block, $textMatches)) {
+                        $text .= implode(' ', $textMatches[1]) . "\n";
+                    }
+                }
+            }
+            return trim($text);
+        } catch (\Exception $e) {
+            return '';
+        }
     }
 }

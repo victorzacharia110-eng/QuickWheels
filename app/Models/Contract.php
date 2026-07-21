@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\ContractDocument;
 
 class Contract extends Model
 {
@@ -89,6 +90,14 @@ class Contract extends Model
     public function payments()
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Get documents for this contract
+     */
+    public function contractDocuments()
+    {
+        return $this->hasMany(ContractDocument::class);
     }
 
     // ==================== SCOPES ====================
