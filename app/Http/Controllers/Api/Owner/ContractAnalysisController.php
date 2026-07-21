@@ -20,8 +20,12 @@ class ContractAnalysisController extends Controller
 
     public function analyze(Request $request, $employeeId, $documentId)
     {
-        $ownerId = $request->user()->owner->id;
-        $employee = Employee::where('owner_id', $ownerId)->find($employeeId);
+        $owner = $request->user()->owner;
+        if (!$owner) {
+            return response()->json(['success' => false, 'message' => 'Owner profile not found'], 404);
+        }
+
+        $employee = Employee::where('owner_id', $owner->id)->find($employeeId);
 
         if (!$employee) {
             return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
@@ -33,29 +37,44 @@ class ContractAnalysisController extends Controller
             return response()->json(['success' => false, 'message' => 'Document not found'], 404);
         }
 
-        $mime = $document->file_mime_type;
-        $isImage = str_starts_with($mime, 'image/');
+        $mime = $document->file_mime_type ?? '';
+        $isImage = is_string($mime) && str_starts_with($mime, 'image/');
         $isPdf = $mime === 'application/pdf';
 
-        $analysis = null;
-
-        if ($isImage) {
-            $fullPath = Storage::disk('public')->path($document->file_path);
-            $imageData = base64_encode(file_get_contents($fullPath));
-            $analysis = $this->gemini->analyzeDocumentImage($imageData, $mime);
-        } elseif ($isPdf) {
-            $fullPath = Storage::disk('public')->path($document->file_path);
-            $text = $this->extractPdfText($fullPath);
-            if (!empty($text)) {
-                $analysis = $this->gemini->analyzeContract($text);
-            } else {
-                $analysis = ['error' => 'Could not extract text from PDF. Try uploading an image instead.'];
-            }
-        } else {
+        if (!$isImage && !$isPdf) {
             return response()->json([
                 'success' => false,
                 'message' => 'AI analysis is only available for image and PDF files',
             ], 422);
+        }
+
+        try {
+            $fullPath = Storage::disk('public')->path($document->file_path);
+
+            if (!file_exists($fullPath)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File not found on server. Please re-upload the document.',
+                ], 422);
+            }
+
+            if ($isImage) {
+                $imageData = base64_encode(file_get_contents($fullPath));
+                $analysis = $this->gemini->analyzeDocumentImage($imageData, $mime);
+            } else {
+                $text = $this->extractPdfText($fullPath);
+                if (!empty($text)) {
+                    $analysis = $this->gemini->analyzeContract($text);
+                } else {
+                    $analysis = ['error' => 'Could not extract text from PDF. Try uploading an image instead.'];
+                }
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Document analyze error', ['message' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to read document file. Please re-upload.',
+            ], 500);
         }
 
         if (isset($analysis['error'])) {
