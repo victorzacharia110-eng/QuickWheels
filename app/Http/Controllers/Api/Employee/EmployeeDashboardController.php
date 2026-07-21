@@ -44,7 +44,7 @@ class EmployeeDashboardController extends Controller
 
     protected function ownerIndex(Request $request)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         if (!$ownerId) {
             return response()->json(['success' => false, 'message' => 'Owner profile not found'], 403);
         }
@@ -67,7 +67,7 @@ class EmployeeDashboardController extends Controller
 
     public function store(Request $request)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         if (!$ownerId) {
             return response()->json(['success' => false, 'message' => 'Owner profile not found'], 403);
         }
@@ -158,7 +158,7 @@ class EmployeeDashboardController extends Controller
 
     public function show(Request $request, $id)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $employee = Employee::where('owner_id', $ownerId)->with('vehicle')->find($id);
 
         if (!$employee) {
@@ -176,7 +176,7 @@ class EmployeeDashboardController extends Controller
 
     public function update(Request $request, $id)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $employee = Employee::where('owner_id', $ownerId)->find($id);
 
         if (!$employee) {
@@ -244,7 +244,7 @@ class EmployeeDashboardController extends Controller
 
     public function destroy(Request $request, $id)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $employee = Employee::where('owner_id', $ownerId)->find($id);
 
         if (!$employee) {
@@ -270,7 +270,7 @@ class EmployeeDashboardController extends Controller
 
     public function toggleStatus(Request $request, $id)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $employee = Employee::where('owner_id', $ownerId)->find($id);
 
         if (!$employee) {
@@ -291,7 +291,7 @@ class EmployeeDashboardController extends Controller
 
     public function assignVehicle(Request $request, $id)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $employee = Employee::where('owner_id', $ownerId)->find($id);
 
         if (!$employee) {
@@ -331,7 +331,7 @@ class EmployeeDashboardController extends Controller
 
     public function removeVehicle(Request $request, $id)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $employee = Employee::where('owner_id', $ownerId)->find($id);
 
         if (!$employee) {
@@ -352,7 +352,7 @@ class EmployeeDashboardController extends Controller
 
     public function stats(Request $request)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
 
         if ($ownerId) {
             $stats = Employee::where('owner_id', $ownerId)->get()->pipe(fn($employees) => [
@@ -374,7 +374,7 @@ class EmployeeDashboardController extends Controller
 
     public function withVehicles(Request $request)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
 
         $employees = Employee::where('owner_id', $ownerId)
             ->whereNotNull('vehicle_id')
@@ -389,7 +389,7 @@ class EmployeeDashboardController extends Controller
 
     public function withoutVehicles(Request $request)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
 
         $employees = Employee::where('owner_id', $ownerId)
             ->whereNull('vehicle_id')
@@ -403,7 +403,7 @@ class EmployeeDashboardController extends Controller
 
     public function getByEmail(Request $request, $email)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $employee = Employee::where('owner_id', $ownerId)
             ->where('email', $email)
             ->with('vehicle')
@@ -418,7 +418,7 @@ class EmployeeDashboardController extends Controller
 
     public function getByName(Request $request, $name)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $employee = Employee::where('owner_id', $ownerId)
             ->where('name', 'like', "%{$name}%")
             ->with('vehicle')
@@ -433,7 +433,7 @@ class EmployeeDashboardController extends Controller
 
     public function dashboard(Request $request)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
 
         $employees = Employee::where('owner_id', $ownerId)->with('vehicle')->get();
 

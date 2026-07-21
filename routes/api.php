@@ -56,7 +56,7 @@ Route::get('/vehicles/{id}', [VehicleController::class, 'show']);
 Route::middleware('auth:sanctum')->group(function () {
     
     // ==================== OWNER ROUTES ====================
-    Route::prefix('owner')->group(function () {
+    Route::prefix('owner')->middleware('ensure.owner')->group(function () {
         
         // Dashboard
         Route::get('/dashboard', [OwnerDashboardController::class, 'index']);

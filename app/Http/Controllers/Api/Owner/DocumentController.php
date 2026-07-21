@@ -13,7 +13,7 @@ class DocumentController extends Controller
 {
     public function index(Request $request, $employeeId)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $employee = Employee::where('owner_id', $ownerId)->find($employeeId);
 
         if (!$employee) {
@@ -30,7 +30,7 @@ class DocumentController extends Controller
 
     public function store(Request $request, $employeeId)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $employee = Employee::where('owner_id', $ownerId)->find($employeeId);
 
         if (!$employee) {
@@ -71,7 +71,7 @@ class DocumentController extends Controller
 
     public function show(Request $request, $employeeId, $documentId)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $document = EmployeeDocument::where('employee_id', $employeeId)
             ->whereHas('employee', fn($q) => $q->where('owner_id', $ownerId))
             ->find($documentId);
@@ -85,7 +85,7 @@ class DocumentController extends Controller
 
     public function download(Request $request, $employeeId, $documentId)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $document = EmployeeDocument::where('employee_id', $employeeId)
             ->whereHas('employee', fn($q) => $q->where('owner_id', $ownerId))
             ->find($documentId);
@@ -99,7 +99,7 @@ class DocumentController extends Controller
 
     public function destroy(Request $request, $employeeId, $documentId)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $document = EmployeeDocument::where('employee_id', $employeeId)
             ->whereHas('employee', fn($q) => $q->where('owner_id', $ownerId))
             ->find($documentId);
@@ -116,7 +116,7 @@ class DocumentController extends Controller
 
     public function verify(Request $request, $employeeId, $documentId)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $document = EmployeeDocument::where('employee_id', $employeeId)
             ->whereHas('employee', fn($q) => $q->where('owner_id', $ownerId))
             ->find($documentId);

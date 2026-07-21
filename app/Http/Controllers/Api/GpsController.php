@@ -97,7 +97,7 @@ class GpsController extends Controller
 
     public function getAllLatest(Request $request)
     {
-        $vehicleIds = Vehicle::where('owner_id', $request->user()->owner?->id)
+        $vehicleIds = Vehicle::where('owner_id', $request->user()->owner->id)
             ->where('is_active', true)
             ->pluck('id');
 

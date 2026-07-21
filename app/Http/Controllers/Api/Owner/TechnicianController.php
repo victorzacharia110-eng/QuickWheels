@@ -15,10 +15,7 @@ class TechnicianController extends Controller
 {
     public function index(Request $request)
     {
-        $ownerId = $request->user()->owner?->id;
-        if (!$ownerId) {
-            return response()->json(['success' => false, 'message' => 'Owner profile not found'], 403);
-        }
+        $ownerId = $request->user()->owner->id;
 
         $technicians = Employee::where('owner_id', $ownerId)
             ->where('position', 'Technician')
@@ -34,10 +31,7 @@ class TechnicianController extends Controller
 
     public function store(Request $request)
     {
-        $ownerId = $request->user()->owner?->id;
-        if (!$ownerId) {
-            return response()->json(['success' => false, 'message' => 'Owner profile not found'], 403);
-        }
+        $ownerId = $request->user()->owner->id;
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
@@ -114,7 +108,7 @@ class TechnicianController extends Controller
 
     public function show(Request $request, $id)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $technician = Employee::where('owner_id', $ownerId)
             ->where('position', 'Technician')
             ->with('vehicle')
@@ -132,7 +126,7 @@ class TechnicianController extends Controller
 
     public function update(Request $request, $id)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $technician = Employee::where('owner_id', $ownerId)
             ->where('position', 'Technician')
             ->find($id);
@@ -193,7 +187,7 @@ class TechnicianController extends Controller
 
     public function destroy(Request $request, $id)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $technician = Employee::where('owner_id', $ownerId)
             ->where('position', 'Technician')
             ->find($id);
@@ -217,7 +211,7 @@ class TechnicianController extends Controller
 
     public function toggleStatus(Request $request, $id)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $technician = Employee::where('owner_id', $ownerId)
             ->where('position', 'Technician')
             ->find($id);
@@ -237,7 +231,7 @@ class TechnicianController extends Controller
 
     public function stats(Request $request)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
 
         $technicians = Employee::where('owner_id', $ownerId)
             ->where('position', 'Technician')

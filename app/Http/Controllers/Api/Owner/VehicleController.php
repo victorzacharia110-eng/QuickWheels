@@ -14,7 +14,7 @@ class VehicleController extends Controller
         $query = Vehicle::query();
 
         if ($request->user() && $request->user()->role === 'owner') {
-            $ownerId = $request->user()->owner?->id;
+            $ownerId = $request->user()->owner->id;
             if ($ownerId) {
                 $query->where('owner_id', $ownerId);
             }
@@ -57,13 +57,7 @@ class VehicleController extends Controller
             ], 422);
         }
 
-        $ownerId = $request->user()->owner?->id;
-        if (!$ownerId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Owner profile not found',
-            ], 403);
-        }
+        $ownerId = $request->user()->owner->id;
 
         $data = $validator->validated();
         $data['owner_id'] = $ownerId;
@@ -90,7 +84,7 @@ class VehicleController extends Controller
         }
 
         if ($request->user() && $request->user()->role === 'owner') {
-            $ownerId = $request->user()->owner?->id;
+            $ownerId = $request->user()->owner->id;
             if ($ownerId && $vehicle->owner_id && $vehicle->owner_id !== $ownerId) {
                 return response()->json([
                     'success' => false,
@@ -116,7 +110,7 @@ class VehicleController extends Controller
             ], 404);
         }
 
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         if (!$ownerId || $vehicle->owner_id !== $ownerId) {
             return response()->json([
                 'success' => false,
@@ -164,7 +158,7 @@ class VehicleController extends Controller
             ], 404);
         }
 
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         if (!$ownerId || $vehicle->owner_id !== $ownerId) {
             return response()->json([
                 'success' => false,
@@ -191,7 +185,7 @@ class VehicleController extends Controller
             ], 404);
         }
 
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         if (!$ownerId || $vehicle->owner_id !== $ownerId) {
             return response()->json([
                 'success' => false,
@@ -222,7 +216,7 @@ class VehicleController extends Controller
 
     public function stats(Request $request)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
 
         return response()->json([
             'success' => true,

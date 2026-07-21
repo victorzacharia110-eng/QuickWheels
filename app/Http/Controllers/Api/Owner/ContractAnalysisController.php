@@ -20,7 +20,7 @@ class ContractAnalysisController extends Controller
 
     public function analyze(Request $request, $employeeId, $documentId)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
         $employee = Employee::where('owner_id', $ownerId)->find($employeeId);
 
         if (!$employee) {
@@ -83,7 +83,7 @@ class ContractAnalysisController extends Controller
 
     public function analyzeText(Request $request)
     {
-        $ownerId = $request->user()->owner?->id;
+        $ownerId = $request->user()->owner->id;
 
         $request->validate([
             'text' => 'required|string|max:50000',
