@@ -13,6 +13,10 @@ use App\Http\Controllers\Api\Employee\MaintenanceController;
 use App\Http\Controllers\Api\Employee\EmployeeDashboardController;
 use App\Http\Controllers\Api\Employee\BookingController as EmployeeBookingController;
 use App\Http\Controllers\Api\Employee\VehicleController as EmployeeVehicleController;
+use App\Http\Controllers\Api\Technician\MaintenanceController as TechnicianMaintenanceController;
+use App\Http\Controllers\Api\Owner\TechnicianController;
+use App\Http\Controllers\Api\Owner\DocumentController;
+use App\Http\Controllers\Api\Owner\ContractAnalysisController;
 use App\Http\Controllers\Api\Payments\PaymentController;
 use App\Http\Controllers\Api\Contracts\ContractController;
 use App\Http\Controllers\Api\Contracts\ContractController as ContractsContractController;
@@ -88,12 +92,33 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/employees/{id}/toggle-status', [EmployeeDashboardController::class, 'toggleStatus']);
         Route::post('/employees/{id}/assign-vehicle', [EmployeeDashboardController::class, 'assignVehicle']);
         Route::delete('/employees/{id}/remove-vehicle', [EmployeeDashboardController::class, 'removeVehicle']);
+
+        // Employee Documents
+        Route::get('/employees/{employeeId}/documents', [DocumentController::class, 'index']);
+        Route::post('/employees/{employeeId}/documents', [DocumentController::class, 'store']);
+        Route::get('/employees/{employeeId}/documents/{documentId}', [DocumentController::class, 'show']);
+        Route::get('/employees/{employeeId}/documents/{documentId}/download', [DocumentController::class, 'download']);
+        Route::delete('/employees/{employeeId}/documents/{documentId}', [DocumentController::class, 'destroy']);
+        Route::patch('/employees/{employeeId}/documents/{documentId}/verify', [DocumentController::class, 'verify']);
+
+        // AI Contract Analysis
+        Route::post('/employees/{employeeId}/documents/{documentId}/analyze', [ContractAnalysisController::class, 'analyze']);
+        Route::post('/ai/analyze-text', [ContractAnalysisController::class, 'analyzeText']);
         Route::get('/employees/stats', [EmployeeDashboardController::class, 'stats']);
         Route::get('/employees/with-vehicles', [EmployeeDashboardController::class, 'withVehicles']);
         Route::get('/employees/without-vehicles', [EmployeeDashboardController::class, 'withoutVehicles']);
         Route::get('/employees/email/{email}', [EmployeeDashboardController::class, 'getByEmail']);
         Route::get('/employees/name/{name}', [EmployeeDashboardController::class, 'getByName']);
         Route::get('/employees/dashboard', [EmployeeDashboardController::class, 'dashboard']);
+
+        // Technicians (Owner-managed)
+        Route::get('/technicians', [TechnicianController::class, 'index']);
+        Route::post('/technicians', [TechnicianController::class, 'store']);
+        Route::get('/technicians/{id}', [TechnicianController::class, 'show']);
+        Route::put('/technicians/{id}', [TechnicianController::class, 'update']);
+        Route::delete('/technicians/{id}', [TechnicianController::class, 'destroy']);
+        Route::patch('/technicians/{id}/toggle-status', [TechnicianController::class, 'toggleStatus']);
+        Route::get('/technicians/stats', [TechnicianController::class, 'stats']);
         
         // Contracts (Owner)
         Route::get('/contracts', [ContractsContractController::class, 'index']);
@@ -155,6 +180,25 @@ Route::middleware('auth:sanctum')->group(function () {
         // Customers
         Route::get('/customers', [App\Http\Controllers\Api\Employee\CustomerController::class, 'index']);
         Route::get('/customers/{id}', [App\Http\Controllers\Api\Employee\CustomerController::class, 'show']);
+    });
+    
+    // ==================== TECHNICIAN ROUTES ====================
+    Route::prefix('technician')->group(function () {
+        
+        // Dashboard
+        Route::get('/dashboard', [TechnicianMaintenanceController::class, 'dashboard']);
+        
+        // Maintenance Reports
+        Route::get('/maintenance', [TechnicianMaintenanceController::class, 'index']);
+        Route::post('/maintenance', [TechnicianMaintenanceController::class, 'store']);
+        Route::get('/maintenance/{id}', [TechnicianMaintenanceController::class, 'show']);
+        Route::put('/maintenance/{id}', [TechnicianMaintenanceController::class, 'update']);
+        Route::post('/maintenance/{id}/complete', [TechnicianMaintenanceController::class, 'complete']);
+        
+        // Maintenance Items
+        Route::post('/maintenance/{id}/items', [TechnicianMaintenanceController::class, 'addItem']);
+        Route::put('/maintenance/{maintenanceId}/items/{itemId}', [TechnicianMaintenanceController::class, 'updateItem']);
+        Route::delete('/maintenance/{maintenanceId}/items/{itemId}', [TechnicianMaintenanceController::class, 'destroyItem']);
     });
     
     // ==================== CUSTOMER ROUTES ====================

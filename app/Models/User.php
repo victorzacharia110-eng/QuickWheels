@@ -125,6 +125,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user is a technician.
+     */
+    public function isTechnician(): bool
+    {
+        return $this->role === 'technician';
+    }
+
+    /**
      * Check if user is active.
      */
     public function isActive(): bool
@@ -227,6 +235,7 @@ class User extends Authenticatable
             'owner' => 'Owner',
             'employee' => 'Employee',
             'customer' => 'Customer',
+            'technician' => 'Technician',
         ];
         return $labels[$this->role] ?? $this->role;
     }
@@ -313,7 +322,7 @@ class User extends Authenticatable
     {
         if ($this->isOwner()) {
             return $this->owner;
-        } elseif ($this->isEmployee()) {
+        } elseif ($this->isEmployee() || $this->isTechnician()) {
             return $this->employee;
         }
         return null;
@@ -327,6 +336,12 @@ class User extends Authenticatable
         // Owner has all permissions
         if ($this->isOwner()) {
             return true;
+        }
+
+        // Technician has maintenance permissions
+        if ($this->isTechnician()) {
+            $techPermissions = ['view_vehicles', 'create_maintenance', 'edit_maintenance', 'view_maintenance'];
+            return in_array($permission, $techPermissions);
         }
 
         // Check employee permissions

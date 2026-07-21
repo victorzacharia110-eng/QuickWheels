@@ -109,6 +109,11 @@ class Employee extends Model
         return $this->hasMany(Maintenance::class);
     }
 
+    public function documents()
+    {
+        return $this->hasMany(EmployeeDocument::class);
+    }
+
     // ==================== SCOPES ====================
 
     /**
@@ -374,14 +379,60 @@ class Employee extends Model
     public function toggleStatus()
     {
         $this->status = $this->status === 'active' ? 'inactive' : 'active';
-        
-        // If deactivating, remove vehicle assignment
-        if ($this->status === 'inactive' && $this->vehicle_id) {
+
+        // If deactivating, remove vehicle assignment and disable user login
+        if ($this->status === 'inactive') {
+            if ($this->vehicle_id) {
+                $this->removeVehicle();
+            }
+            if ($this->user) {
+                $this->user->update(['is_active' => false]);
+            }
+        } else {
+            // Reactivating: re-enable user login
+            if ($this->user) {
+                $this->user->update(['is_active' => true]);
+            }
+        }
+
+        $this->save();
+
+        return $this;
+    }
+
+    /**
+     * Deactivate employee (when contract expires or time is up)
+     */
+    public function deactivate($reason = null)
+    {
+        $this->status = 'inactive';
+
+        if ($this->vehicle_id) {
             $this->removeVehicle();
         }
-        
+
+        if ($this->user) {
+            $this->user->update(['is_active' => false]);
+        }
+
         $this->save();
-        
+
+        return $this;
+    }
+
+    /**
+     * Reactivate employee
+     */
+    public function reactivate()
+    {
+        $this->status = 'active';
+
+        if ($this->user) {
+            $this->user->update(['is_active' => true]);
+        }
+
+        $this->save();
+
         return $this;
     }
 
@@ -445,6 +496,7 @@ class Employee extends Model
             'permissions' => $this->permissions,
             'supervisor_id' => $this->supervisor_id,
             'profile_image' => $this->profile_image,
+            'documents_count' => $this->documents()->count(),
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
         ];

@@ -41,4 +41,8 @@ return [
         'client_id' => env('CLICKPESA_CLIENT_ID'),
     ],
 
+    'gemini' => [
+        'api_key' => env('GEMINI_API_KEY'),
+    ],
+
 ];

@@ -27,7 +27,7 @@ class AuthController extends Controller
             'password' => 'required|string|min:8|confirmed',
             'phone' => 'nullable|string|max:20',
             'phone_number' => 'nullable|string|max:20',
-            'role' => 'nullable|in:superadmin,owner,employee,customer',
+            'role' => 'nullable|in:superadmin,owner,employee,customer,technician',
             // Owner specific
             'business_name' => 'required_if:role,owner|string|max:255',
             'business_license' => 'required_if:role,owner|string|unique:owners,business_license',
@@ -410,7 +410,7 @@ class AuthController extends Controller
             ];
             $data['business_name'] = $user->owner->business_name;
             $data['is_verified'] = $user->owner->is_verified;
-        } elseif ($user->role === 'employee' && $user->employee) {
+        } elseif (($user->role === 'employee' || $user->role === 'technician') && $user->employee) {
             $data['employee'] = [
                 'id' => $user->employee->id,
                 'employee_id' => $user->employee->employee_id,
