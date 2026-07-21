@@ -101,7 +101,7 @@ PROMPT;
                 return ['error' => 'Failed to parse AI response', 'raw_text' => $text];
             }
 
-            return $decoded;
+            return $this->sanitizeUtf8($decoded);
         } catch (\Exception $e) {
             Log::error('Gemini analysis exception', ['message' => $e->getMessage()]);
             return ['error' => 'AI analysis failed: ' . $e->getMessage()];
@@ -152,5 +152,16 @@ PROMPT;
             return ['error' => 'Could not extract text from image'];
         }
         return $this->analyzeContract($extractedText);
+    }
+
+    private function sanitizeUtf8($data)
+    {
+        if (is_string($data)) {
+            return @iconv('UTF-8', 'UTF-8//IGNORE', $data) ?? $data;
+        }
+        if (is_array($data)) {
+            return array_map([$this, 'sanitizeUtf8'], $data);
+        }
+        return $data;
     }
 }
