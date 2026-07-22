@@ -25,6 +25,10 @@ class ContractAnalysisController extends Controller
             return response()->json(['success' => false, 'message' => 'Owner profile not found'], 404);
         }
 
+        if (!$owner->isAiEnabled()) {
+            return response()->json(['success' => false, 'message' => 'AI features are not enabled. Please enable AI in your settings.', 'code' => 'ai_disabled'], 403);
+        }
+
         $employee = Employee::where('owner_id', $owner->id)->find($employeeId);
 
         if (!$employee) {

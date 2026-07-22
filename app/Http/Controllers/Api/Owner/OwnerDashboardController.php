@@ -517,4 +517,49 @@ class OwnerDashboardController extends Controller
 
         return $actions;
     }
+
+    // ==================== AI TOGGLE ====================
+
+    /**
+     * Toggle AI features on/off for the owner
+     * POST /api/owner/ai/toggle
+     */
+    public function toggleAi(Request $request)
+    {
+        $owner = $request->user()->owner;
+
+        if (!$owner) {
+            return response()->json(['success' => false, 'message' => 'Owner profile not found'], 404);
+        }
+
+        $newState = $owner->toggleAi();
+
+        return response()->json([
+            'success' => true,
+            'message' => $newState ? 'AI features enabled' : 'AI features disabled',
+            'data' => [
+                'ai_enabled' => $newState,
+            ],
+        ]);
+    }
+
+    /**
+     * Get AI feature status
+     * GET /api/owner/ai/status
+     */
+    public function aiStatus(Request $request)
+    {
+        $owner = $request->user()->owner;
+
+        if (!$owner) {
+            return response()->json(['success' => false, 'message' => 'Owner profile not found'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'ai_enabled' => $owner->isAiEnabled(),
+            ],
+        ]);
+    }
 }

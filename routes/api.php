@@ -106,6 +106,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // AI Contract Analysis
         Route::post('/employees/{employeeId}/documents/{documentId}/analyze', [ContractAnalysisController::class, 'analyze']);
         Route::post('/ai/analyze-text', [ContractAnalysisController::class, 'analyzeText']);
+
+        // AI Feature Toggle
+        Route::post('/ai/toggle', [OwnerDashboardController::class, 'toggleAi']);
+        Route::get('/ai/status', [OwnerDashboardController::class, 'aiStatus']);
         Route::get('/employees/stats', [EmployeeDashboardController::class, 'stats']);
         Route::get('/employees/with-vehicles', [EmployeeDashboardController::class, 'withVehicles']);
         Route::get('/employees/without-vehicles', [EmployeeDashboardController::class, 'withoutVehicles']);

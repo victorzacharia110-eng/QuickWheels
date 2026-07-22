@@ -20,7 +20,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'nida_number',
     'profile_image',
     'is_active',
-    'last_login'
+    'last_login',
+    'password_changed_at'
 ])]
 #[Hidden([
     'password',
@@ -42,6 +43,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'last_login' => 'datetime',
+            'password_changed_at' => 'datetime',
             'deleted_at' => 'datetime',
         ];
     }
@@ -313,6 +315,45 @@ class User extends Authenticatable
         return null;
     }
 
+    // ==================== PASSWORD MANAGEMENT ====================
+
+    /**
+     * Get the default password for this user (name in CAPS).
+     */
+    public function getDefaultPassword(): string
+    {
+        return strtoupper($this->name);
+    }
+
+    /**
+     * Check if the user's current password is the default password.
+     */
+    public function isDefaultPassword(): bool
+    {
+        return \Hash::check($this->getDefaultPassword(), $this->password);
+    }
+
+    /**
+     * Check if the user must change their password.
+     * Returns true if password_changed_at is null or older than 6 months.
+     */
+    public function mustChangePassword(): bool
+    {
+        if (is_null($this->password_changed_at)) {
+            return true;
+        }
+
+        return $this->password_changed_at->diffInMonths(now()) >= 6;
+    }
+
+    /**
+     * Mark the password as changed.
+     */
+    public function markPasswordAsChanged(): void
+    {
+        $this->update(['password_changed_at' => now()]);
+    }
+
     // ==================== HELPERS ====================
 
     /**
@@ -388,6 +429,8 @@ class User extends Authenticatable
             'profile_image' => $this->profile_image,
             'is_active' => $this->is_active,
             'last_login' => $this->last_login?->toDateTimeString(),
+            'password_changed_at' => $this->password_changed_at?->toDateTimeString(),
+            'must_change_password' => $this->mustChangePassword(),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];

@@ -407,9 +407,11 @@ class AuthController extends Controller
                 'business_phone' => $user->owner->business_phone,
                 'business_email' => $user->owner->business_email,
                 'is_verified' => $user->owner->is_verified,
+                'ai_enabled' => $user->owner->isAiEnabled(),
             ];
             $data['business_name'] = $user->owner->business_name;
             $data['is_verified'] = $user->owner->is_verified;
+            $data['ai_enabled'] = $user->owner->isAiEnabled();
         } elseif (($user->role === 'employee' || $user->role === 'technician') && $user->employee) {
             $data['employee'] = [
                 'id' => $user->employee->id,
@@ -426,6 +428,10 @@ class AuthController extends Controller
             $data['department'] = $user->employee->department;
             $data['position'] = $user->employee->position;
             $data['owner_id'] = $user->employee->owner_id;
+            // AI enabled based on owner's setting
+            if ($user->employee->owner) {
+                $data['ai_enabled'] = $user->employee->owner->isAiEnabled();
+            }
         }
 
         return $data;

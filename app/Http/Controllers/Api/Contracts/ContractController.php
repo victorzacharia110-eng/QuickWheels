@@ -581,6 +581,11 @@ class ContractController extends Controller
 
     public function analyzeDocument(Request $request, $contractId, $documentId)
     {
+        $owner = $request->user()->owner;
+        if ($owner && !$owner->isAiEnabled()) {
+            return response()->json(['success' => false, 'message' => 'AI features are not enabled. Please enable AI in your settings.', 'code' => 'ai_disabled'], 403);
+        }
+
         $document = ContractDocument::where('contract_id', $contractId)->find($documentId);
         if (!$document) {
             return response()->json(['success' => false, 'message' => 'Document not found'], 404);

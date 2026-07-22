@@ -60,6 +60,11 @@ class EmployeeDashboardController extends Controller
                 $data = $employee->toApiResponse();
                 // Ensure vehicle_name is included
                 $data['vehicle_name'] = $employee->vehicle ? $employee->vehicle->name : null;
+                // Add user password status
+                if ($employee->user) {
+                    $data['must_change_password'] = $employee->user->mustChangePassword();
+                    $data['password_changed_at'] = $employee->user->password_changed_at?->toDateTimeString();
+                }
                 return $data;
             }),
         ]);
@@ -105,8 +110,8 @@ class EmployeeDashboardController extends Controller
 
         $data = $validator->validated();
 
-        // Generate password if not provided
-        $plainPassword = $data['password'] ?? Str::random(10);
+        // Default password is name in CAPS
+        $plainPassword = strtoupper($data['name']);
 
         // Create User account so the employee can log in
         $user = User::create([
@@ -116,6 +121,7 @@ class EmployeeDashboardController extends Controller
             'phone' => $data['phone'],
             'role' => 'employee',
             'is_active' => true,
+            'password_changed_at' => null, // Default password, must change on first login
         ]);
 
         try {
@@ -448,6 +454,45 @@ class EmployeeDashboardController extends Controller
                     'without_vehicles' => $employees->whereNull('vehicle_id')->count(),
                 ],
                 'employees' => $employees->map(fn($e) => $this->formatEmployeeWithVehicle($e)),
+            ],
+        ]);
+    }
+
+    // ==================== PASSWORD MANAGEMENT ====================
+
+    /**
+     * Reset employee password to default (name in CAPS)
+     */
+    public function resetPassword(Request $request, $id)
+    {
+        $ownerId = $request->user()->owner->id;
+        $employee = Employee::where('owner_id', $ownerId)->with('user')->find($id);
+
+        if (!$employee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee not found',
+            ], 404);
+        }
+
+        if (!$employee->user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee has no user account',
+            ], 400);
+        }
+
+        $defaultPassword = strtoupper($employee->name);
+        $employee->user->update([
+            'password' => Hash::make($defaultPassword),
+            'password_changed_at' => null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee password reset to default',
+            'data' => [
+                'default_password' => $defaultPassword,
             ],
         ]);
     }

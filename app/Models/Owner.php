@@ -256,6 +256,38 @@ class Owner extends Model
         });
     }
 
+    // ==================== FEATURE FLAGS ====================
+
+    /**
+     * Check if AI features are enabled for this owner.
+     */
+    public function isAiEnabled(): bool
+    {
+        return data_get($this->settings, 'ai_enabled', false) === true;
+    }
+
+    /**
+     * Toggle AI features on/off.
+     */
+    public function toggleAi(): bool
+    {
+        $settings = $this->settings ?? [];
+        $current = data_get($settings, 'ai_enabled', false);
+        data_set($settings, 'ai_enabled', !$current);
+        $this->update(['settings' => $settings]);
+        return !$current;
+    }
+
+    /**
+     * Enable or disable AI features.
+     */
+    public function setAiEnabled(bool $enabled): void
+    {
+        $settings = $this->settings ?? [];
+        data_set($settings, 'ai_enabled', $enabled);
+        $this->update(['settings' => $settings]);
+    }
+
     // ==================== HELPER METHODS ====================
 
     /**
@@ -416,6 +448,7 @@ class Owner extends Model
             // Settings
             'settings' => $this->settings,
             'preferences' => $this->preferences,
+            'ai_enabled' => $this->isAiEnabled(),
             
             // Timestamps
             'created_at' => $this->created_at?->toDateTimeString(),
