@@ -66,6 +66,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard/recent-bookings', [OwnerDashboardController::class, 'recentBookings']);
         Route::get('/dashboard/chart', [OwnerDashboardController::class, 'chart']);
         Route::get('/dashboard/vehicle-performance', [OwnerDashboardController::class, 'vehiclePerformance']);
+
+        // Reports
+        Route::get('/reports', [OwnerDashboardController::class, 'reports']);
         
         // Vehicles
         Route::get('/vehicles', [VehicleController::class, 'index']);

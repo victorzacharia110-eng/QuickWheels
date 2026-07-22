@@ -521,6 +521,39 @@ class OwnerDashboardController extends Controller
     // ==================== AI TOGGLE ====================
 
     /**
+     * Get reports data for the Reports page
+     * GET /api/owner/reports
+     */
+    public function reports(Request $request)
+    {
+        $ownerId = $request->user()->owner->id;
+
+        $chartData = $this->getChartData($ownerId, 6);
+        $recentActivity = $this->getRecentActivity($ownerId);
+        $stats = $this->getStats($ownerId);
+
+        // Build monthly revenue array for the bar chart
+        $monthlyRevenue = [];
+        $maxRevenue = max(array_merge($chartData['revenue'], [1]));
+        for ($i = 0; $i < count($chartData['labels']); $i++) {
+            $monthlyRevenue[] = [
+                'month' => explode(' ', $chartData['labels'][$i])[0],
+                'amount' => $chartData['revenue'][$i],
+                'percentage' => $maxRevenue > 0 ? round(($chartData['revenue'][$i] / $maxRevenue) * 100) : 0,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'stats' => $stats,
+                'monthly_revenue' => $monthlyRevenue,
+                'recent_activity' => $recentActivity,
+            ],
+        ]);
+    }
+
+    /**
      * Toggle AI features on/off for the owner
      * POST /api/owner/ai/toggle
      */
