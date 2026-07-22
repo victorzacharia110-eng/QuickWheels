@@ -211,6 +211,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // Dashboard
         Route::get('/dashboard', [TechnicianMaintenanceController::class, 'dashboard']);
         
+        // Vehicles
+        Route::get('/vehicles', [TechnicianMaintenanceController::class, 'vehicles']);
+        
         // Maintenance Reports
         Route::get('/maintenance', [TechnicianMaintenanceController::class, 'index']);
         Route::post('/maintenance', [TechnicianMaintenanceController::class, 'store']);

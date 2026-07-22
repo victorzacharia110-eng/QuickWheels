@@ -414,4 +414,29 @@ class MaintenanceController extends Controller
             'message' => 'Item removed successfully',
         ]);
     }
+
+    public function vehicles(Request $request)
+    {
+        $user = $request->user();
+        $employee = Employee::where('user_id', $user->id)->first();
+
+        if (!$employee) {
+            return response()->json(['success' => false, 'message' => 'Technician profile not found'], 404);
+        }
+
+        $vehicleIds = Maintenance::where('employee_id', $employee->id)
+            ->whereNotNull('vehicle_id')
+            ->pluck('vehicle_id')
+            ->unique();
+
+        $vehicles = Vehicle::whereIn('id', $vehicleIds)
+            ->orWhere('id', $employee->vehicle_id)
+            ->get()
+            ->unique('id');
+
+        return response()->json([
+            'success' => true,
+            'data' => $vehicles,
+        ]);
+    }
 }
