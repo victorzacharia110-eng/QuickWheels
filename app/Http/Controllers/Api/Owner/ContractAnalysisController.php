@@ -40,11 +40,13 @@ class ContractAnalysisController extends Controller
         $mime = $document->file_mime_type ?? '';
         $isImage = is_string($mime) && str_starts_with($mime, 'image/');
         $isPdf = $mime === 'application/pdf';
+        $isDocx = $mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        $isDoc = $mime === 'application/msword';
 
-        if (!$isImage && !$isPdf) {
+        if (!$isImage && !$isPdf && !$isDocx && !$isDoc) {
             return response()->json([
                 'success' => false,
-                'message' => 'AI analysis is only available for image and PDF files',
+                'message' => 'AI analysis supports PDF, image, and Word documents. Please re-upload in a supported format.',
             ], 422);
         }
 
@@ -55,6 +57,13 @@ class ContractAnalysisController extends Controller
             if ($isImage) {
                 $imageData = base64_encode($fileContents);
                 $analysis = $this->gemini->analyzeDocumentImage($imageData, $mime, $docType);
+            } elseif ($isDocx) {
+                $text = $this->extractDocxText($fileContents);
+                if (!empty(trim($text))) {
+                    $analysis = $this->gemini->analyzeDocument($text, $docType);
+                } else {
+                    $analysis = ['error' => 'Could not extract text from Word document. Try uploading as PDF or image instead.'];
+                }
             } else {
                 $text = $this->extractPdfTextFromContents($fileContents);
                 if (!empty($text)) {
@@ -115,6 +124,33 @@ class ContractAnalysisController extends Controller
             'success' => true,
             'data' => ['analysis' => $analysis],
         ]);
+    }
+
+    protected function extractDocxText(string $contents): string
+    {
+        try {
+            $tmpFile = tempnam(sys_get_temp_dir(), 'docx_');
+            file_put_contents($tmpFile, $contents);
+
+            $zip = new \ZipArchive();
+            if ($zip->open($tmpFile) === true) {
+                $xml = $zip->getFromName('word/document.xml');
+                $zip->close();
+                unlink($tmpFile);
+
+                if ($xml) {
+                    $text = preg_replace('/<[^>]+>/', ' ', $xml);
+                    $text = preg_replace('/\s+/', ' ', $text);
+                    return trim($text);
+                }
+                return '';
+            }
+
+            unlink($tmpFile);
+            return '';
+        } catch (\Exception $e) {
+            return '';
+        }
     }
 
     protected function extractPdfText(string $path): string
