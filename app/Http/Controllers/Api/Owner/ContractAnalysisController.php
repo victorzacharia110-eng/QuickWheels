@@ -40,15 +40,6 @@ class ContractAnalysisController extends Controller
         $mime = $document->file_mime_type ?? '';
         $isImage = is_string($mime) && str_starts_with($mime, 'image/');
         $isPdf = $mime === 'application/pdf';
-        $isDocx = $mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        $isDoc = $mime === 'application/msword';
-
-        if (!$isImage && !$isPdf && !$isDocx && !$isDoc) {
-            return response()->json([
-                'success' => false,
-                'message' => 'AI analysis supports PDF, image, and Word documents. Please re-upload in a supported format.',
-            ], 422);
-        }
 
         try {
             $fileContents = Storage::disk('s3')->get($document->file_path);
@@ -57,19 +48,16 @@ class ContractAnalysisController extends Controller
             if ($isImage) {
                 $imageData = base64_encode($fileContents);
                 $analysis = $this->gemini->analyzeDocumentImage($imageData, $mime, $docType);
-            } elseif ($isDocx) {
-                $text = $this->extractDocxText($fileContents);
+            } elseif ($isPdf) {
+                $imageData = base64_encode($fileContents);
+                $analysis = $this->gemini->analyzeDocumentPdf($imageData, $docType);
+            } else {
+                $text = $this->extractAnyText($fileContents, $mime);
                 if (!empty(trim($text))) {
                     $analysis = $this->gemini->analyzeDocument($text, $docType);
                 } else {
-                    $analysis = ['error' => 'Could not extract text from Word document. Try uploading as PDF or image instead.'];
-                }
-            } else {
-                $text = $this->extractPdfTextFromContents($fileContents);
-                if (!empty($text)) {
-                    $analysis = $this->gemini->analyzeDocument($text, $docType);
-                } else {
-                    $analysis = ['error' => 'Could not extract text from PDF. Try uploading an image instead.'];
+                    $imageData = base64_encode($fileContents);
+                    $analysis = $this->gemini->analyzeDocumentImage($imageData, $mime ?: 'application/octet-stream', $docType);
                 }
             }
         } catch (\Exception $e) {
@@ -124,6 +112,20 @@ class ContractAnalysisController extends Controller
             'success' => true,
             'data' => ['analysis' => $analysis],
         ]);
+    }
+
+    protected function extractAnyText(string $contents, string $mime): string
+    {
+        if ($mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || $mime === 'application/msword') {
+            return $this->extractDocxText($contents);
+        }
+        if ($mime === 'application/pdf') {
+            return $this->extractPdfTextFromContents($contents);
+        }
+        if (in_array($mime, ['text/plain', 'text/csv', 'text/html'])) {
+            return $contents;
+        }
+        return $this->parsePdfContent($contents);
     }
 
     protected function extractDocxText(string $contents): string

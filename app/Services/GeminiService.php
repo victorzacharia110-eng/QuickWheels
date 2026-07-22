@@ -170,6 +170,57 @@ PROMPT;
         return $this->analyzeContract($extractedText);
     }
 
+    public function analyzeDocumentPdf(string $pdfBase64, string $docType = 'contract'): array
+    {
+        if (empty($this->apiKey)) {
+            return ['error' => 'Gemini API key not configured'];
+        }
+
+        if ($docType === 'identification') {
+            $prompt = "Extract all personal information, ID numbers, dates, license details, and any text from this identification document. Return the extracted text only.";
+        } else {
+            $prompt = "Extract all text from this contract document. Preserve structure, headings, and formatting. Return only the extracted text.";
+        }
+
+        try {
+            $response = Http::timeout(90)
+                ->post("{$this->baseUrl}/models/gemini-2.0-flash:generateContent?key={$this->apiKey}", [
+                    'contents' => [
+                        [
+                            'parts' => [
+                                ['text' => $prompt],
+                                ['inline_data' => ['mime_type' => 'application/pdf', 'data' => $pdfBase64]],
+                            ],
+                        ],
+                    ],
+                    'generationConfig' => [
+                        'temperature' => 0.1,
+                        'maxOutputTokens' => 16384,
+                    ],
+                ]);
+
+            if ($response->failed()) {
+                Log::error('Gemini PDF API error', ['status' => $response->status(), 'body' => $response->body()]);
+                return ['error' => 'AI PDF analysis failed: ' . $response->body()];
+            }
+
+            $result = $response->json();
+            $extractedText = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
+
+            if (empty(trim($extractedText))) {
+                return ['error' => 'Could not extract text from PDF'];
+            }
+
+            if ($docType === 'identification') {
+                return $this->analyzeIdentification($extractedText);
+            }
+            return $this->analyzeContract($extractedText);
+        } catch (\Exception $e) {
+            Log::error('Gemini PDF analysis exception', ['message' => $e->getMessage()]);
+            return ['error' => 'AI PDF analysis failed: ' . $e->getMessage()];
+        }
+    }
+
     public function analyzeIdentification(string $text): array
     {
         if (empty($this->apiKey)) {
