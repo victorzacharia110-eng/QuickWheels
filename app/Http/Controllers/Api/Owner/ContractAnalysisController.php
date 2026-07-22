@@ -49,20 +49,13 @@ class ContractAnalysisController extends Controller
         }
 
         try {
-            $fullPath = Storage::disk('public')->path($document->file_path);
-
-            if (!file_exists($fullPath)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'File not found on server. Please re-upload the document.',
-                ], 422);
-            }
+            $fileContents = Storage::disk('s3')->get($document->file_path);
 
             if ($isImage) {
-                $imageData = base64_encode(file_get_contents($fullPath));
+                $imageData = base64_encode($fileContents);
                 $analysis = $this->gemini->analyzeDocumentImage($imageData, $mime);
             } else {
-                $text = $this->extractPdfText($fullPath);
+                $text = $this->extractPdfTextFromContents($fileContents);
                 if (!empty($text)) {
                     $analysis = $this->gemini->analyzeContract($text);
                 } else {
@@ -127,19 +120,33 @@ class ContractAnalysisController extends Controller
     {
         try {
             $content = file_get_contents($path);
-            $text = '';
-
-            if (preg_match_all('/BT\s*.*?\s*ET/s', $content, $matches)) {
-                foreach ($matches[0] as $block) {
-                    if (preg_match_all('/\((.*?)\)/s', $block, $textMatches)) {
-                        $text .= implode(' ', $textMatches[1]) . "\n";
-                    }
-                }
-            }
-
-            return trim($text);
+            return $this->parsePdfContent($content);
         } catch (\Exception $e) {
             return '';
         }
+    }
+
+    protected function extractPdfTextFromContents(string $content): string
+    {
+        try {
+            return $this->parsePdfContent($content);
+        } catch (\Exception $e) {
+            return '';
+        }
+    }
+
+    private function parsePdfContent(string $content): string
+    {
+        $text = '';
+
+        if (preg_match_all('/BT\s*.*?\s*ET/s', $content, $matches)) {
+            foreach ($matches[0] as $block) {
+                if (preg_match_all('/\((.*?)\)/s', $block, $textMatches)) {
+                    $text .= implode(' ', $textMatches[1]) . "\n";
+                }
+            }
+        }
+
+        return trim($text);
     }
 }

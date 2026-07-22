@@ -45,7 +45,7 @@ class ContractDocument extends Model
 
     public function getUrlAttribute(): string
     {
-        return Storage::disk('public')->url($this->file_path);
+        return Storage::disk('s3')->url($this->file_path);
     }
 
     public function getFileSizeFormattedAttribute(): string

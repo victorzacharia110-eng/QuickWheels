@@ -47,7 +47,7 @@ class DocumentController extends Controller
 
         $file = $request->file('file');
         $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('documents/employees/' . $employee->id, $filename, 'public');
+        $path = $file->storeAs('documents/employees/' . $employee->id, $filename, 's3');
 
         $document = EmployeeDocument::create([
             'employee_id' => $employee->id,
@@ -101,14 +101,11 @@ class DocumentController extends Controller
             return response()->json(['success' => false, 'message' => 'Document not found'], 404);
         }
 
-        $filePath = Storage::disk('public')->path($document->file_path);
+        $fileContents = Storage::disk('s3')->get($document->file_path);
 
-        if (!file_exists($filePath)) {
-            return response()->json(['success' => false, 'message' => 'File not found on disk'], 404);
-        }
-
-        return response()->download($filePath, $document->file_name, [
+        return response($fileContents, 200, [
             'Content-Type' => $document->file_mime_type ?? 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="' . $document->file_name . '"',
         ]);
     }
 
@@ -120,7 +117,7 @@ class DocumentController extends Controller
             return response()->json(['success' => false, 'message' => 'Document not found'], 404);
         }
 
-        Storage::disk('public')->delete($document->file_path);
+        Storage::disk('s3')->delete($document->file_path);
         $document->delete();
 
         return response()->json(['success' => true, 'message' => 'Document deleted successfully']);

@@ -519,7 +519,7 @@ class ContractController extends Controller
 
         $file = $request->file('file');
         $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('documents/contracts/' . $contract->id, $filename, 'public');
+        $path = $file->storeAs('documents/contracts/' . $contract->id, $filename, 's3');
 
         $document = ContractDocument::create([
             'contract_id' => $contract->id,
@@ -546,14 +546,11 @@ class ContractController extends Controller
         if (!$document) {
             return response()->json(['success' => false, 'message' => 'Document not found'], 404);
         }
-        $filePath = Storage::disk('public')->path($document->file_path);
+        $fileContents = Storage::disk('s3')->get($document->file_path);
 
-        if (!file_exists($filePath)) {
-            return response()->json(['success' => false, 'message' => 'File not found on disk'], 404);
-        }
-
-        return response()->download($filePath, $document->file_name, [
+        return response($fileContents, 200, [
             'Content-Type' => $document->file_mime_type ?? 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="' . $document->file_name . '"',
         ]);
     }
 
@@ -563,7 +560,7 @@ class ContractController extends Controller
         if (!$document) {
             return response()->json(['success' => false, 'message' => 'Document not found'], 404);
         }
-        Storage::disk('public')->delete($document->file_path);
+        Storage::disk('s3')->delete($document->file_path);
         $document->delete();
         return response()->json(['success' => true, 'message' => 'Document deleted']);
     }
@@ -597,12 +594,10 @@ class ContractController extends Controller
         $analysis = null;
 
         if ($isImage) {
-            $fullPath = Storage::disk('public')->path($document->file_path);
-            $imageData = base64_encode(file_get_contents($fullPath));
+            $imageData = base64_encode(Storage::disk('s3')->get($document->file_path));
             $analysis = $gemini->analyzeDocumentImage($imageData, $mime);
         } elseif ($isPdf) {
-            $fullPath = Storage::disk('public')->path($document->file_path);
-            $text = $this->extractPdfText($fullPath);
+            $text = $this->extractPdfTextFromContents(Storage::disk('s3')->get($document->file_path));
             if (!empty($text)) {
                 $analysis = $gemini->analyzeContract($text);
             } else {
@@ -632,17 +627,31 @@ class ContractController extends Controller
     {
         try {
             $content = file_get_contents($path);
-            $text = '';
-            if (preg_match_all('/BT\s*.*?\s*ET/s', $content, $matches)) {
-                foreach ($matches[0] as $block) {
-                    if (preg_match_all('/\((.*?)\)/s', $block, $textMatches)) {
-                        $text .= implode(' ', $textMatches[1]) . "\n";
-                    }
-                }
-            }
-            return trim($text);
+            return $this->parsePdfContent($content);
         } catch (\Exception $e) {
             return '';
         }
+    }
+
+    protected function extractPdfTextFromContents(string $content): string
+    {
+        try {
+            return $this->parsePdfContent($content);
+        } catch (\Exception $e) {
+            return '';
+        }
+    }
+
+    private function parsePdfContent(string $content): string
+    {
+        $text = '';
+        if (preg_match_all('/BT\s*.*?\s*ET/s', $content, $matches)) {
+            foreach ($matches[0] as $block) {
+                if (preg_match_all('/\((.*?)\)/s', $block, $textMatches)) {
+                    $text .= implode(' ', $textMatches[1]) . "\n";
+                }
+            }
+        }
+        return trim($text);
     }
 }
