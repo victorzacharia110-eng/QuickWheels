@@ -151,6 +151,9 @@ class TechnicianController extends Controller
             'salary' => 'nullable|numeric|min:0',
             'shift' => 'nullable|string|max:50',
             'vehicle_id' => 'nullable|exists:vehicles,id',
+            'workshop_address' => 'nullable|string',
+            'workshop_latitude' => 'nullable|numeric|between:-90,90',
+            'workshop_longitude' => 'nullable|numeric|between:-180,180',
         ]);
 
         if ($validator->fails()) {
@@ -163,32 +166,39 @@ class TechnicianController extends Controller
 
         $data = $validator->validated();
 
-        if (isset($data['vehicle_id'])) {
-            if ($data['vehicle_id']) {
-                $technician->assignVehicle($data['vehicle_id']);
-            } else {
-                $technician->removeVehicle();
+        try {
+            if (array_key_exists('vehicle_id', $data)) {
+                if (!empty($data['vehicle_id'])) {
+                    $technician->assignVehicle($data['vehicle_id']);
+                } else {
+                    $technician->removeVehicle();
+                }
+                unset($data['vehicle_id']);
             }
-            unset($data['vehicle_id']);
-        }
 
-        $technician->update($data);
+            $technician->update($data);
 
-        if ($technician->user_id) {
-            $userData = [];
-            if (isset($data['name'])) $userData['name'] = $data['name'];
-            if (isset($data['email'])) $userData['email'] = $data['email'];
-            if (isset($data['phone'])) $userData['phone'] = $data['phone'];
-            if (!empty($userData)) {
-                User::where('id', $technician->user_id)->update($userData);
+            if ($technician->user_id) {
+                $userData = [];
+                if (isset($data['name'])) $userData['name'] = $data['name'];
+                if (isset($data['email'])) $userData['email'] = $data['email'];
+                if (isset($data['phone'])) $userData['phone'] = $data['phone'];
+                if (!empty($userData)) {
+                    User::where('id', $technician->user_id)->update($userData);
+                }
             }
-        }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Technician updated successfully',
-            'data' => $this->formatTechnician($technician->fresh()->load('vehicle')),
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Technician updated successfully',
+                'data' => $this->formatTechnician($technician->fresh()->load('vehicle')),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update technician: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function destroy(Request $request, $id)
