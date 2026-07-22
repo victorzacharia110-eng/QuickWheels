@@ -78,11 +78,8 @@ class DocumentController extends Controller
             return null;
         }
 
-        $document = EmployeeDocument::where('employee_id', $employeeId)
-            ->where('owner_id', $ownerId)
+        return EmployeeDocument::where('employee_id', $employeeId)
             ->find($documentId);
-
-        return $document;
     }
 
     public function show(Request $request, $employeeId, $documentId)
