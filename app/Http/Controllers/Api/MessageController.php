@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\User;
+use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -103,28 +104,49 @@ class MessageController extends Controller
         $user = $request->user();
         $role = $user->role;
 
-        if ($role === 'technician') {
-            $owner = $user->owner ?? $user->employee?->owner?->user;
-            if ($owner) {
-                return response()->json([
-                    'success' => true,
-                    'data' => [['id' => $owner->id, 'name' => $owner->name, 'role' => 'owner']],
+        if ($role === 'owner') {
+            $employees = Employee::where('owner_id', $user->owner?->id)
+                ->whereHas('user')
+                ->with('user')
+                ->get()
+                ->map(fn($e) => [
+                    'id' => $e->user_id,
+                    'name' => $e->user->name,
+                    'role' => strtolower($e->position) === 'technician' ? 'technician' : 'employee',
                 ]);
-            }
-            return response()->json(['success' => true, 'data' => []]);
+
+            return response()->json(['success' => true, 'data' => $employees]);
         }
 
-        if ($role === 'owner') {
-            $technicians = User::where('role', 'technician')
-                ->whereIn('id', function ($q) use ($user) {
-                    $q->select('user_id')->from('employees')
-                        ->where('owner_id', $user->owner?->id)
-                        ->where('position', 'Technician');
-                })
-                ->get()
-                ->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'role' => 'technician']);
+        if ($role === 'technician' || $role === 'employee') {
+            $employee = Employee::where('user_id', $user->id)->first();
 
-            return response()->json(['success' => true, 'data' => $technicians]);
+            if (!$employee) {
+                return response()->json(['success' => true, 'data' => []]);
+            }
+
+            $ownerId = $employee->owner_id;
+            $contacts = collect();
+
+            $owner = User::where('role', 'owner')
+                ->whereHas('owner', fn($q) => $q->id = $ownerId)
+                ->first();
+            if ($owner) {
+                $contacts->push(['id' => $owner->id, 'name' => $owner->name, 'role' => 'owner']);
+            }
+
+            $peers = Employee::where('owner_id', $ownerId)
+                ->where('user_id', '!=', $user->id)
+                ->whereHas('user')
+                ->with('user')
+                ->get()
+                ->map(fn($e) => [
+                    'id' => $e->user_id,
+                    'name' => $e->user->name,
+                    'role' => strtolower($e->position) === 'technician' ? 'technician' : 'employee',
+                ]);
+
+            return response()->json(['success' => true, 'data' => $contacts->merge($peers)->values()]);
         }
 
         return response()->json(['success' => true, 'data' => []]);
