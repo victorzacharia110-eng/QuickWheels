@@ -315,7 +315,8 @@ class AuthController extends Controller
         }
 
         $user->update([
-            'password' => Hash::make($request->new_password)
+            'password' => Hash::make($request->new_password),
+            'password_changed_at' => now(),
         ]);
 
         return response()->json([
@@ -398,6 +399,8 @@ class AuthController extends Controller
         ];
 
         // Add role-specific data
+        $data['must_change_password'] = $user->mustChangePassword();
+
         if ($user->role === 'owner' && $user->owner) {
             $data['business'] = [
                 'id' => $user->owner->id,

@@ -97,6 +97,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/employees/{id}/toggle-status', [EmployeeDashboardController::class, 'toggleStatus']);
         Route::post('/employees/{id}/assign-vehicle', [EmployeeDashboardController::class, 'assignVehicle']);
         Route::delete('/employees/{id}/remove-vehicle', [EmployeeDashboardController::class, 'removeVehicle']);
+        Route::post('/employees/{id}/reset-password', [EmployeeDashboardController::class, 'resetPassword']);
 
         // Employee Documents
         Route::get('/employees/{employeeId}/documents', [DocumentController::class, 'index']);
