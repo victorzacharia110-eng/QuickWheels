@@ -39,7 +39,7 @@ class DocumentController extends Controller
 
         $request->validate([
             'file' => 'required|file|max:20480|mimes:pdf,jpg,jpeg,png,doc,docx',
-            'document_type' => 'required|string|in:contract,license,nida,insurance,medical,background_check,other',
+            'document_type' => 'required|string|in:contract,identification',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'expires_at' => 'nullable|date|after:today',

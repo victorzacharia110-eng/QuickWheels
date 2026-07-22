@@ -50,14 +50,15 @@ class ContractAnalysisController extends Controller
 
         try {
             $fileContents = Storage::disk('s3')->get($document->file_path);
+            $docType = $document->document_type ?? 'contract';
 
             if ($isImage) {
                 $imageData = base64_encode($fileContents);
-                $analysis = $this->gemini->analyzeDocumentImage($imageData, $mime);
+                $analysis = $this->gemini->analyzeDocumentImage($imageData, $mime, $docType);
             } else {
                 $text = $this->extractPdfTextFromContents($fileContents);
                 if (!empty($text)) {
-                    $analysis = $this->gemini->analyzeContract($text);
+                    $analysis = $this->gemini->analyzeDocument($text, $docType);
                 } else {
                     $analysis = ['error' => 'Could not extract text from PDF. Try uploading an image instead.'];
                 }

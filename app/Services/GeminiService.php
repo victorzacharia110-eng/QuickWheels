@@ -145,13 +145,105 @@ PROMPT;
         }
     }
 
-    public function analyzeDocumentImage(string $imageBase64, string $mimeType = 'image/jpeg'): array
+    public function analyzeDocument(string $text, string $docType = 'contract'): array
     {
+        if ($docType === 'identification') {
+            return $this->analyzeIdentification($text);
+        }
+        return $this->analyzeContract($text);
+    }
+
+    public function analyzeDocumentImage(string $imageBase64, string $mimeType = 'image/jpeg', string $docType = 'contract'): array
+    {
+        if ($docType === 'identification') {
+            $extractedText = $this->extractTextFromImage($imageBase64, $mimeType);
+            if (empty($extractedText)) {
+                return ['error' => 'Could not extract text from image'];
+            }
+            return $this->analyzeIdentification($extractedText);
+        }
+
         $extractedText = $this->extractTextFromImage($imageBase64, $mimeType);
         if (empty($extractedText)) {
             return ['error' => 'Could not extract text from image'];
         }
         return $this->analyzeContract($extractedText);
+    }
+
+    public function analyzeIdentification(string $text): array
+    {
+        if (empty($this->apiKey)) {
+            return ['error' => 'Gemini API key not configured'];
+        }
+
+        $prompt = <<<PROMPT
+You are an identification document analysis AI. Analyze the following text extracted from a driver's identification document, license, or national ID card. Return ONLY valid JSON (no markdown, no code fences) with these fields:
+
+{
+  "document_type": "license" or "national_id" or "passport" or "other",
+  "personal_info": {
+    "full_name": "full name as shown",
+    "id_number": "ID number or license number",
+    "date_of_birth": "YYYY-MM-DD or as shown",
+    "gender": "male/female or as shown",
+    "nationality": "nationality",
+    "address": "address if available"
+  },
+  "document_info": {
+    "issue_date": "YYYY-MM-DD or as shown",
+    "expiry_date": "YYYY-MM-DD or as shown",
+    "issuing_authority": "issuing authority or institution"
+  },
+  "license_info": {
+    "license_class": "class/category if it's a license",
+    "license_number": "license number",
+    "valid_until": "expiry date if shown",
+    "vehicle_types": ["list of vehicle types allowed"]
+  },
+  "special_notes": ["any other important observations about the document"]
+}
+
+Document text:
+{$text}
+PROMPT;
+
+        try {
+            $response = Http::timeout(60)
+                ->post("{$this->baseUrl}/models/gemini-2.0-flash:generateContent?key={$this->apiKey}", [
+                    'contents' => [
+                        ['parts' => [['text' => $prompt]]],
+                    ],
+                    'generationConfig' => [
+                        'temperature' => 0.1,
+                        'maxOutputTokens' => 4096,
+                    ],
+                ]);
+
+            if ($response->failed()) {
+                Log::error('Gemini API error', ['status' => $response->status(), 'body' => $response->body()]);
+                return ['error' => 'AI analysis failed: ' . $response->body()];
+            }
+
+            $result = $response->json();
+            $text = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
+
+            $text = trim($text);
+            if (str_starts_with($text, '```')) {
+                $text = preg_replace('/^```(?:json)?\s*/i', '', $text);
+                $text = preg_replace('/\s*```$/', '', $text);
+            }
+
+            $decoded = json_decode($text, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('Gemini JSON parse error', ['text' => $text, 'error' => json_last_error_msg()]);
+                return ['error' => 'Failed to parse AI response', 'raw_text' => $text];
+            }
+
+            return $this->sanitizeUtf8($decoded);
+        } catch (\Exception $e) {
+            Log::error('Gemini identification analysis exception', ['message' => $e->getMessage()]);
+            return ['error' => 'AI analysis failed: ' . $e->getMessage()];
+        }
     }
 
     private function sanitizeUtf8($data)
