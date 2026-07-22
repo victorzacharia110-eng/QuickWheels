@@ -69,12 +69,25 @@ class DocumentController extends Controller
         ], 201);
     }
 
-    public function show(Request $request, $employeeId, $documentId)
+    private function findEmployeeAndDocument(Request $request, $employeeId, $documentId)
     {
         $ownerId = $request->user()->owner->id;
+        $employee = Employee::where('owner_id', $ownerId)->find($employeeId);
+
+        if (!$employee) {
+            return null;
+        }
+
         $document = EmployeeDocument::where('employee_id', $employeeId)
-            ->whereHas('employee', fn($q) => $q->where('owner_id', $ownerId))
+            ->where('owner_id', $ownerId)
             ->find($documentId);
+
+        return $document;
+    }
+
+    public function show(Request $request, $employeeId, $documentId)
+    {
+        $document = $this->findEmployeeAndDocument($request, $employeeId, $documentId);
 
         if (!$document) {
             return response()->json(['success' => false, 'message' => 'Document not found'], 404);
@@ -85,10 +98,7 @@ class DocumentController extends Controller
 
     public function download(Request $request, $employeeId, $documentId)
     {
-        $ownerId = $request->user()->owner->id;
-        $document = EmployeeDocument::where('employee_id', $employeeId)
-            ->whereHas('employee', fn($q) => $q->where('owner_id', $ownerId))
-            ->find($documentId);
+        $document = $this->findEmployeeAndDocument($request, $employeeId, $documentId);
 
         if (!$document) {
             return response()->json(['success' => false, 'message' => 'Document not found'], 404);
@@ -105,10 +115,7 @@ class DocumentController extends Controller
 
     public function destroy(Request $request, $employeeId, $documentId)
     {
-        $ownerId = $request->user()->owner->id;
-        $document = EmployeeDocument::where('employee_id', $employeeId)
-            ->whereHas('employee', fn($q) => $q->where('owner_id', $ownerId))
-            ->find($documentId);
+        $document = $this->findEmployeeAndDocument($request, $employeeId, $documentId);
 
         if (!$document) {
             return response()->json(['success' => false, 'message' => 'Document not found'], 404);
@@ -122,10 +129,7 @@ class DocumentController extends Controller
 
     public function verify(Request $request, $employeeId, $documentId)
     {
-        $ownerId = $request->user()->owner->id;
-        $document = EmployeeDocument::where('employee_id', $employeeId)
-            ->whereHas('employee', fn($q) => $q->where('owner_id', $ownerId))
-            ->find($documentId);
+        $document = $this->findEmployeeAndDocument($request, $employeeId, $documentId);
 
         if (!$document) {
             return response()->json(['success' => false, 'message' => 'Document not found'], 404);
