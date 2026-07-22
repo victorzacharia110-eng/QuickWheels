@@ -69,10 +69,11 @@ class ContractAnalysisController extends Controller
         }
 
         if (isset($analysis['error'])) {
+            $isQuota = $analysis['error'] === 'quota_exceeded';
             return response()->json([
                 'success' => false,
-                'message' => $analysis['error'],
-            ], 422);
+                'message' => $isQuota ? 'quota_exceeded' : $analysis['error'],
+            ], $isQuota ? 429 : 422);
         }
 
         $document->update([

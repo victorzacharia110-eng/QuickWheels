@@ -82,8 +82,7 @@ PROMPT;
                 ]);
 
             if ($response->failed()) {
-                Log::error('Gemini API error', ['status' => $response->status(), 'body' => $response->body()]);
-                return ['error' => 'AI analysis failed: ' . $response->body()];
+                return $this->handleApiError($response);
             }
 
             $result = $response->json();
@@ -200,8 +199,7 @@ PROMPT;
                 ]);
 
             if ($response->failed()) {
-                Log::error('Gemini PDF API error', ['status' => $response->status(), 'body' => $response->body()]);
-                return ['error' => 'AI PDF analysis failed: ' . $response->body()];
+                return $this->handleApiError($response);
             }
 
             $result = $response->json();
@@ -271,8 +269,7 @@ PROMPT;
                 ]);
 
             if ($response->failed()) {
-                Log::error('Gemini API error', ['status' => $response->status(), 'body' => $response->body()]);
-                return ['error' => 'AI analysis failed: ' . $response->body()];
+                return $this->handleApiError($response);
             }
 
             $result = $response->json();
@@ -306,5 +303,19 @@ PROMPT;
             }
         }
         return $data;
+    }
+
+    protected function handleApiError($response): array
+    {
+        $status = $response->status();
+        $body = $response->body();
+
+        if ($status === 429 || str_contains($body, 'RESOURCE_EXHAUSTED') || str_contains($body, 'quota')) {
+            Log::warning('Gemini API quota exceeded', ['status' => $status]);
+            return ['error' => 'quota_exceeded'];
+        }
+
+        Log::error('Gemini API error', ['status' => $status, 'body' => $body]);
+        return ['error' => 'AI analysis failed. Please try again later.'];
     }
 }
