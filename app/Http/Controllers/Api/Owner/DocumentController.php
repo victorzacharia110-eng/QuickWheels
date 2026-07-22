@@ -94,7 +94,13 @@ class DocumentController extends Controller
             return response()->json(['success' => false, 'message' => 'Document not found'], 404);
         }
 
-        return Storage::disk('public')->download($document->file_path, $document->file_name);
+        $filePath = public_path('storage/' . $document->file_path);
+
+        if (!file_exists($filePath)) {
+            return response()->json(['success' => false, 'message' => 'File not found on disk'], 404);
+        }
+
+        return response()->download($filePath, $document->file_name);
     }
 
     public function destroy(Request $request, $employeeId, $documentId)
