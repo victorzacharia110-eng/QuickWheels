@@ -505,10 +505,15 @@ class EmployeeDashboardController extends Controller
             ], 400);
         }
 
-        $defaultPassword = strtoupper($employee->name);
-        $employee->user->update([
+        $defaultPassword = strtoupper(str_replace(' ', '', $employee->name));
+        $user = $employee->user;
+        if ($user->trashed()) {
+            $user->restore();
+        }
+        $user->update([
             'password' => Hash::make($defaultPassword),
-            'password_changed_at' => null,
+            'must_change_password' => true,
+            'is_active' => true,
         ]);
 
         return response()->json([

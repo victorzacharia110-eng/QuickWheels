@@ -65,7 +65,7 @@ class TechnicianController extends Controller
         }
 
         $data = $validator->validated();
-        $plainPassword = Str::lower(str_replace(' ', '', $data['name']));
+        $plainPassword = strtoupper(str_replace(' ', '', $data['name']));
 
         try {
             $existingUser = User::withTrashed()->where('email', $data['email'])->first();
@@ -384,7 +384,7 @@ class TechnicianController extends Controller
             $user->restore();
         }
 
-        $defaultPassword = Str::lower(str_replace(' ', '', $technician->name));
+        $defaultPassword = strtoupper(str_replace(' ', '', $technician->name));
         $user->update([
             'password' => Hash::make($defaultPassword),
             'must_change_password' => true,
