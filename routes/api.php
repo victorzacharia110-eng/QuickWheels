@@ -336,5 +336,9 @@ Route::middleware(['auth:sanctum', 'superadmin'])->prefix('superadmin')->group(f
     Route::post('/owners/{id}/toggle-verification', [SuperAdminController::class, 'toggleVerification']);
     Route::post('/owners/{id}/toggle-status', [SuperAdminController::class, 'toggleUserStatus']);
     Route::delete('/owners/{id}', [SuperAdminController::class, 'destroy']);
+    Route::post('/owners/{id}/reset-password', [SuperAdminController::class, 'resetOwnerPassword']);
+    Route::get('/deleted', [SuperAdminController::class, 'deletedRecords']);
+    Route::delete('/deleted/{type}/{id}', [SuperAdminController::class, 'forceDeleteRecord']);
+    Route::delete('/deleted/{type}', [SuperAdminController::class, 'purgeType']);
     Route::get('/stats', [SuperAdminController::class, 'stats']);
 });

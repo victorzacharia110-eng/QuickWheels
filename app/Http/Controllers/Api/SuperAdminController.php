@@ -9,6 +9,7 @@ use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class SuperAdminController extends Controller
 {
@@ -242,6 +243,160 @@ class SuperAdminController extends Controller
                 'employees_count' => User::where('role', 'employee')->count(),
                 'customers_count' => User::where('role', 'customer')->count(),
             ],
+        ]);
+    }
+
+    /**
+     * Reset owner password to their name uppercase no spaces
+     */
+    public function resetOwnerPassword($id)
+    {
+        $owner = Owner::with('user')->find($id);
+
+        if (!$owner) {
+            return response()->json(['success' => false, 'message' => 'Owner not found'], 404);
+        }
+
+        $user = $owner->user;
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Owner user not found'], 404);
+        }
+
+        $newPassword = strtoupper(str_replace(' ', '', $user->name));
+        $user->update([
+            'password' => Hash::make($newPassword),
+            'must_change_password' => true,
+            'is_active' => true,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password reset successfully',
+            'data' => [
+                'default_password' => $newPassword,
+            ],
+        ]);
+    }
+
+    /**
+     * List all soft-deleted records across users, owners, employees
+     */
+    public function deletedRecords()
+    {
+        $deletedOwners = Owner::with('user')->onlyTrashed()->get()->map(fn($o) => [
+            'id' => $o->id,
+            'type' => 'owner',
+            'name' => $o->business_name ?: optional($o->user)->name,
+            'email' => $o->business_email ?: optional($o->user)->email,
+            'deleted_at' => $o->deleted_at,
+        ]);
+
+        $deletedEmployees = Employee::with('user')->onlyTrashed()->get()->map(fn($e) => [
+            'id' => $e->id,
+            'type' => 'employee',
+            'name' => $e->name,
+            'email' => $e->email,
+            'position' => $e->position,
+            'deleted_at' => $e->deleted_at,
+        ]);
+
+        $deletedUsers = User::onlyTrashed()->whereNotIn('id', function($q) {
+            $q->select('user_id')->from('owners')->withTrashed();
+        })->whereNotIn('id', function($q) {
+            $q->select('user_id')->from('employees')->withTrashed();
+        })->get()->map(fn($u) => [
+            'id' => $u->id,
+            'type' => 'user',
+            'name' => $u->name,
+            'email' => $u->email,
+            'role' => $u->role,
+            'deleted_at' => $u->deleted_at,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'owners' => $deletedOwners,
+                'employees' => $deletedEmployees,
+                'users' => $deletedUsers,
+            ],
+            'counts' => [
+                'owners' => $deletedOwners->count(),
+                'employees' => $deletedEmployees->count(),
+                'users' => $deletedUsers->count(),
+                'total' => $deletedOwners->count() + $deletedEmployees->count() + $deletedUsers->count(),
+            ],
+        ]);
+    }
+
+    /**
+     * Force delete a single soft-deleted record
+     */
+    public function forceDeleteRecord($type, $id)
+    {
+        $modelMap = [
+            'owner' => Owner::class,
+            'employee' => Employee::class,
+            'user' => User::class,
+        ];
+
+        if (!isset($modelMap[$type])) {
+            return response()->json(['success' => false, 'message' => 'Invalid type: ' . $type], 422);
+        }
+
+        $model = $modelMap[$type];
+        $record = $model::onlyTrashed()->find($id);
+
+        if (!$record) {
+            return response()->json(['success' => false, 'message' => ucfirst($type) . ' not found in trash'], 404);
+        }
+
+        if ($type === 'owner') {
+            $record->user()->forceDelete();
+        } elseif ($type === 'employee') {
+            $record->user()->forceDelete();
+        }
+
+        $record->forceDelete();
+
+        return response()->json([
+            'success' => true,
+            'message' => ucfirst($type) . ' permanently deleted',
+        ]);
+    }
+
+    /**
+     * Purge all soft-deleted records of a given type
+     */
+    public function purgeType($type)
+    {
+        $modelMap = [
+            'owner' => Owner::class,
+            'employee' => Employee::class,
+            'user' => User::class,
+        ];
+
+        if (!isset($modelMap[$type])) {
+            return response()->json(['success' => false, 'message' => 'Invalid type: ' . $type], 422);
+        }
+
+        $model = $modelMap[$type];
+        $records = $model::onlyTrashed()->get();
+        $count = $records->count();
+
+        foreach ($records as $record) {
+            if ($type === 'owner') {
+                $record->user()->forceDelete();
+            } elseif ($type === 'employee') {
+                $record->user()->forceDelete();
+            }
+            $record->forceDelete();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Purged {$count} soft-deleted {$type} records",
+            'data' => ['purged' => $count],
         ]);
     }
 }
