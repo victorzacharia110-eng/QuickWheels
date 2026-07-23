@@ -68,23 +68,22 @@ class TechnicianController extends Controller
 
             if ($existingEmployee) {
                 $existingEmployee->delete();
-                if ($existingEmployee->user_id) {
-                    User::where('id', $existingEmployee->user_id)->where('role', '!=', 'owner')->delete();
-                }
             }
 
-            $user = $existingUser ?: User::create([
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'password' => Hash::make($plainPassword),
-                'phone' => $data['phone'] ?? null,
-                'role' => 'technician',
-                'can_drive' => !empty($data['can_drive']),
-                'is_active' => true,
-            ]);
             if ($existingUser) {
-                $user->update(['role' => 'technician', 'can_drive' => !empty($data['can_drive'])]);
+                $existingUser->update(['role' => 'technician', 'can_drive' => !empty($data['can_drive'])]);
+                $user = $existingUser;
                 $plainPassword = null;
+            } else {
+                $user = User::create([
+                    'name' => $data['name'],
+                    'email' => $data['email'],
+                    'password' => Hash::make($plainPassword),
+                    'phone' => $data['phone'] ?? null,
+                    'role' => 'technician',
+                    'can_drive' => !empty($data['can_drive']),
+                    'is_active' => true,
+                ]);
             }
 
             $employee = Employee::create([
