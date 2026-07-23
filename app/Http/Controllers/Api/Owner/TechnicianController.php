@@ -360,6 +360,41 @@ class TechnicianController extends Controller
         ]);
     }
 
+    public function resetPassword(Request $request, $id)
+    {
+        $ownerId = $request->user()->owner->id;
+        $technician = Employee::where('owner_id', $ownerId)
+            ->where('position', 'Technician')
+            ->find($id);
+
+        if (!$technician) {
+            return response()->json(['success' => false, 'message' => 'Technician not found'], 404);
+        }
+
+        if (!$technician->user_id) {
+            return response()->json(['success' => false, 'message' => 'Technician has no user account'], 400);
+        }
+
+        $user = User::find($technician->user_id);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'User account not found'], 400);
+        }
+
+        $defaultPassword = Str::lower(str_replace(' ', '', $technician->name));
+        $user->update([
+            'password' => Hash::make($defaultPassword),
+            'must_change_password' => true,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password reset successfully',
+            'data' => [
+                'default_password' => $defaultPassword,
+            ],
+        ]);
+    }
+
     public function stats(Request $request)
     {
         $ownerId = $request->user()->owner->id;

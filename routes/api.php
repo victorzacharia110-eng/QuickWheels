@@ -131,6 +131,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/technicians/{id}/restore', [TechnicianController::class, 'restore']);
         Route::delete('/technicians/{id}/force-delete', [TechnicianController::class, 'forceDelete']);
         Route::patch('/technicians/{id}/toggle-status', [TechnicianController::class, 'toggleStatus']);
+        Route::post('/technicians/{id}/reset-password', [TechnicianController::class, 'resetPassword']);
         Route::get('/technicians/stats', [TechnicianController::class, 'stats']);
         
         // Contracts (Owner)
