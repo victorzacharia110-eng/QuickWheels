@@ -9,7 +9,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('employees', function (Blueprint $table) {
-            $table->dropUnique('employees_email_unique');
             $table->dropUnique('employees_nida_number_unique');
             $table->dropUnique('employees_license_number_unique');
         });
@@ -18,7 +17,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('employees', function (Blueprint $table) {
-            $table->unique('email');
             $table->unique('nida_number');
             $table->unique('license_number');
         });
