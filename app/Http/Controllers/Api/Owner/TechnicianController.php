@@ -63,7 +63,7 @@ class TechnicianController extends Controller
         $plainPassword = Str::lower(str_replace(' ', '', $data['name']));
 
         try {
-            $existingUser = User::where('email', $data['email'])->first();
+            $existingUser = User::withTrashed()->where('email', $data['email'])->first();
             $existingEmployee = Employee::where('email', $data['email'])->first();
 
             if ($existingEmployee) {
@@ -71,7 +71,10 @@ class TechnicianController extends Controller
             }
 
             if ($existingUser) {
-                $existingUser->update(['role' => 'technician', 'can_drive' => !empty($data['can_drive'])]);
+                if ($existingUser->trashed()) {
+                    $existingUser->restore();
+                }
+                $existingUser->update(['role' => 'technician', 'can_drive' => !empty($data['can_drive']), 'is_active' => true]);
                 $user = $existingUser;
                 $plainPassword = null;
             } else {
