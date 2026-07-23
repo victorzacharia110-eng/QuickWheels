@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'password',
     'phone',
     'role',
+    'can_drive',
     'nida_number',
     'profile_image',
     'is_active',
