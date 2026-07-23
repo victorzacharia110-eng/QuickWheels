@@ -27,7 +27,7 @@ class AuthController extends Controller
             'password' => 'required|string|min:8|confirmed',
             'phone' => 'nullable|string|max:20',
             'phone_number' => 'nullable|string|max:20',
-            'role' => 'nullable|in:superadmin,owner,employee,customer,technician',
+            'role' => 'nullable|in:owner,customer',
             // Owner specific
             'business_name' => 'required_if:role,owner|string|max:255',
             'business_license' => 'required_if:role,owner|string|unique:owners,business_license',
