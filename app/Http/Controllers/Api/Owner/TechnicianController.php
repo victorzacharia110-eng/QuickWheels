@@ -17,9 +17,14 @@ class TechnicianController extends Controller
     {
         $ownerId = $request->user()->owner->id;
 
-        $technicians = Employee::where('owner_id', $ownerId)
-            ->where('position', 'Technician')
-            ->with('vehicle')
+        $query = Employee::where('owner_id', $ownerId)
+            ->where('position', 'Technician');
+
+        if ($request->boolean('trashed')) {
+            $query->onlyTrashed();
+        }
+
+        $technicians = $query->with('vehicle')
             ->latest()
             ->get();
 
@@ -114,7 +119,7 @@ class TechnicianController extends Controller
 
             if (!empty($data['can_drive'])) {
                 Employee::updateOrCreate(
-                    ['email' => $data['email'], 'owner_id' => $ownerId],
+                    ['email' => $data['email'], 'owner_id' => $ownerId, 'position' => 'Driver'],
                     [
                         'name' => $data['name'],
                         'phone' => $data['phone'] ?? null,
