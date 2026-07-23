@@ -176,6 +176,8 @@ class Vehicle extends Model
             'daily_rate' => $this->daily_rate,
             'weekly_rate' => $this->weekly_rate,
             'monthly_rate' => $this->monthly_rate,
+            'color' => $this->color,
+            'chassis_number' => $this->chassis_number,
             'is_active' => $this->is_active,
             'created_at' => $this->created_at?->format('Y-m-d'),
             'updated_at' => $this->updated_at?->format('Y-m-d'),
