@@ -128,6 +128,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/technicians/{id}', [TechnicianController::class, 'show']);
         Route::put('/technicians/{id}', [TechnicianController::class, 'update']);
         Route::delete('/technicians/{id}', [TechnicianController::class, 'destroy']);
+        Route::patch('/technicians/{id}/restore', [TechnicianController::class, 'restore']);
+        Route::delete('/technicians/{id}/force-delete', [TechnicianController::class, 'forceDelete']);
         Route::patch('/technicians/{id}/toggle-status', [TechnicianController::class, 'toggleStatus']);
         Route::get('/technicians/stats', [TechnicianController::class, 'stats']);
         

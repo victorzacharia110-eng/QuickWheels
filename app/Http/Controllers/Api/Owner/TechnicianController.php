@@ -274,6 +274,67 @@ class TechnicianController extends Controller
         ]);
     }
 
+    public function restore(Request $request, $id)
+    {
+        $ownerId = $request->user()->owner->id;
+        $technician = Employee::withTrashed()->where('owner_id', $ownerId)
+            ->where('position', 'Technician')
+            ->find($id);
+
+        if (!$technician) {
+            return response()->json(['success' => false, 'message' => 'Technician not found'], 404);
+        }
+
+        $userId = $technician->user_id;
+
+        if ($userId) {
+            User::withTrashed()->where('id', $userId)->restore();
+            Employee::withTrashed()->where('user_id', $userId)
+                ->where('owner_id', $ownerId)
+                ->where('position', 'Driver')
+                ->restore();
+        }
+
+        $technician->restore();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Technician restored successfully',
+        ]);
+    }
+
+    public function forceDelete(Request $request, $id)
+    {
+        $ownerId = $request->user()->owner->id;
+        $technician = Employee::withTrashed()->where('owner_id', $ownerId)
+            ->where('position', 'Technician')
+            ->find($id);
+
+        if (!$technician) {
+            return response()->json(['success' => false, 'message' => 'Technician not found'], 404);
+        }
+
+        $userId = $technician->user_id;
+
+        if ($userId) {
+            Employee::withTrashed()->where('user_id', $userId)
+                ->where('owner_id', $ownerId)
+                ->where('position', 'Driver')
+                ->forceDelete();
+        }
+
+        $technician->forceDelete();
+
+        if ($userId) {
+            User::withTrashed()->where('id', $userId)->forceDelete();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Technician permanently deleted',
+        ]);
+    }
+
     public function toggleStatus(Request $request, $id)
     {
         $ownerId = $request->user()->owner->id;
