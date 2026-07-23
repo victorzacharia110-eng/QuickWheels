@@ -45,6 +45,7 @@ Route::prefix('auth')->group(function () {
         Route::put('/profile', [AuthController::class, 'updateProfile']);
         Route::patch('/update-nida', [AuthController::class, 'updateNida']);
         Route::post('/change-password', [AuthController::class, 'changePassword']);
+        Route::post('/switch-role', [AuthController::class, 'switchRole']);
         Route::put('/owner/profile', [AuthController::class, 'updateOwnerProfile']);
     });
 });

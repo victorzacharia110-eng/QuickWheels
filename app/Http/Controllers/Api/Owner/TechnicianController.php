@@ -46,6 +46,7 @@ class TechnicianController extends Controller
             'salary' => 'nullable|numeric|min:0',
             'shift' => 'nullable|string|max:50',
             'vehicle_id' => 'nullable|exists:vehicles,id',
+            'can_drive' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -68,6 +69,7 @@ class TechnicianController extends Controller
             'password' => Hash::make($plainPassword),
             'phone' => $data['phone'] ?? null,
             'role' => 'technician',
+            'can_drive' => !empty($data['can_drive']),
             'is_active' => true,
         ]);
 
@@ -93,6 +95,24 @@ class TechnicianController extends Controller
 
             if (!empty($data['vehicle_id'])) {
                 $employee->assignVehicle($data['vehicle_id']);
+            }
+
+            if (!empty($data['can_drive'])) {
+                Employee::create([
+                    'name' => $data['name'],
+                    'phone' => $data['phone'] ?? null,
+                    'email' => $data['email'],
+                    'address' => $data['address'] ?? null,
+                    'nida_number' => $data['nida_number'] ?? null,
+                    'license_number' => $data['license_number'] ?? null,
+                    'department' => 'Operations',
+                    'position' => 'Driver',
+                    'salary' => $data['salary'] ?? null,
+                    'shift' => $data['shift'] ?? null,
+                    'owner_id' => $ownerId,
+                    'user_id' => $user->id,
+                    'status' => 'active',
+                ]);
             }
         } catch (\Exception $e) {
             $user->delete();

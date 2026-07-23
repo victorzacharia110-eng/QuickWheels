@@ -390,6 +390,7 @@ class AuthController extends Controller
             'email' => $user->email,
             'phone' => $user->phone,
             'role' => $user->role,
+            'can_drive' => $user->can_drive,
             'nida_number' => $user->nida_number,
             'profile_image' => $user->profile_image,
             'is_active' => $user->is_active,
@@ -438,5 +439,42 @@ class AuthController extends Controller
         }
 
         return $data;
+    }
+
+    public function switchRole(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user->can_drive) {
+            return response()->json(['success' => false, 'message' => 'This account does not have dual role access'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'role' => 'required|in:employee,technician',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $validator->errors()], 422);
+        }
+
+        $newRole = $request->role;
+
+        if ($newRole === $user->role) {
+            return response()->json(['success' => true, 'message' => 'Already on ' . $newRole . ' dashboard', 'data' => ['user' => $this->formatUserData($user)]]);
+        }
+
+        $hasEmployeeRecord = Employee::where('user_id', $user->id)->where('position', $newRole === 'employee' ? 'Driver' : 'Technician')->exists();
+
+        if (!$hasEmployeeRecord) {
+            return response()->json(['success' => false, 'message' => 'No ' . $newRole . ' record found for this account'], 404);
+        }
+
+        $user->update(['role' => $newRole]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Switched to ' . $newRole . ' dashboard',
+            'data' => ['user' => $this->formatUserData($user->fresh())],
+        ]);
     }
 }

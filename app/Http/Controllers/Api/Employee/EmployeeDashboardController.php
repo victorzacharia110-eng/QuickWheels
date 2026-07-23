@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Employee;
 use App\Http\Controllers\Controller;
 use App\Models\Contract;
 use App\Models\Employee;
+use App\Models\Guarantor;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
@@ -50,7 +51,7 @@ class EmployeeDashboardController extends Controller
         }
 
         $employees = Employee::where('owner_id', $ownerId)
-            ->with(['vehicle', 'documents'])  // Load vehicle and documents relationships
+            ->with(['vehicle', 'documents', 'guarantors'])  // Load vehicle, documents and guarantors
             ->latest()
             ->get();
 
@@ -98,6 +99,13 @@ class EmployeeDashboardController extends Controller
             'salary' => 'nullable|numeric|min:0',
             'shift' => 'nullable|string|max:50',
             'vehicle_id' => 'nullable|exists:vehicles,id',
+            'guarantors' => 'nullable|array',
+            'guarantors.*.name' => 'required_with:guarantors|string|max:255',
+            'guarantors.*.phone' => 'nullable|string|max:20',
+            'guarantors.*.email' => 'nullable|email|max:255',
+            'guarantors.*.address' => 'nullable|string',
+            'guarantors.*.nida_number' => 'nullable|string|max:20',
+            'guarantors.*.relationship' => 'nullable|string|max:100',
         ]);
 
         if ($validator->fails()) {
@@ -144,6 +152,21 @@ class EmployeeDashboardController extends Controller
             if (!empty($data['vehicle_id'])) {
                 $employee->assignVehicle($data['vehicle_id']);
             }
+
+            if (!empty($data['guarantors']) && is_array($data['guarantors'])) {
+                foreach ($data['guarantors'] as $g) {
+                    if (!empty($g['name'])) {
+                        $employee->guarantors()->create([
+                            'name' => $g['name'],
+                            'phone' => $g['phone'] ?? null,
+                            'email' => $g['email'] ?? null,
+                            'address' => $g['address'] ?? null,
+                            'nida_number' => $g['nida_number'] ?? null,
+                            'relationship' => $g['relationship'] ?? null,
+                        ]);
+                    }
+                }
+            }
         } catch (\Exception $e) {
             $user->delete();
             return response()->json([
@@ -165,7 +188,7 @@ class EmployeeDashboardController extends Controller
     public function show(Request $request, $id)
     {
         $ownerId = $request->user()->owner->id;
-        $employee = Employee::where('owner_id', $ownerId)->with('vehicle')->find($id);
+        $employee = Employee::where('owner_id', $ownerId)->with(['vehicle', 'guarantors'])->find($id);
 
         if (!$employee) {
             return response()->json([

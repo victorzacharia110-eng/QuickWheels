@@ -117,6 +117,11 @@ class Employee extends Model
         return $this->hasMany(EmployeeDocument::class);
     }
 
+    public function guarantors()
+    {
+        return $this->hasMany(Guarantor::class);
+    }
+
     // ==================== SCOPES ====================
 
     /**
@@ -512,6 +517,15 @@ class Employee extends Model
             'workshop_latitude' => $this->workshop_latitude,
             'workshop_longitude' => $this->workshop_longitude,
             'documents_count' => $this->relationLoaded('documents') ? $this->documents->count() : $this->documents()->count(),
+            'guarantors' => $this->relationLoaded('guarantors') ? $this->guarantors->map(fn($g) => [
+                'id' => $g->id,
+                'name' => $g->name,
+                'phone' => $g->phone,
+                'email' => $g->email,
+                'address' => $g->address,
+                'nida_number' => $g->nida_number,
+                'relationship' => $g->relationship,
+            ])->toArray() : [],
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
         ];
