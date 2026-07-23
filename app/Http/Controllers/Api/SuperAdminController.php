@@ -352,11 +352,19 @@ class SuperAdminController extends Controller
         }
 
         if ($type === 'owner') {
-            $user = $record->user;
-            if ($user) $user->forceDelete();
+            $userId = $record->user_id;
+            $otherOwner = Owner::where('user_id', $userId)->where('id', '!=', $record->id)->first();
+            if (!$otherOwner) {
+                $user = $record->user;
+                if ($user) $user->forceDelete();
+            }
         } elseif ($type === 'employee') {
-            $user = $record->user;
-            if ($user) $user->forceDelete();
+            $userId = $record->user_id;
+            $otherEmployee = Employee::where('user_id', $userId)->where('id', '!=', $record->id)->first();
+            if (!$otherEmployee) {
+                $user = $record->user;
+                if ($user) $user->forceDelete();
+            }
         }
 
         $record->forceDelete();
@@ -388,11 +396,19 @@ class SuperAdminController extends Controller
 
         foreach ($records as $record) {
             if ($type === 'owner') {
-                $user = $record->user;
-                if ($user) $user->forceDelete();
+                $userId = $record->user_id;
+                $otherOwner = Owner::where('user_id', $userId)->where('id', '!=', $record->id)->first();
+                if (!$otherOwner) {
+                    $user = $record->user;
+                    if ($user) $user->forceDelete();
+                }
             } elseif ($type === 'employee') {
-                $user = $record->user;
-                if ($user) $user->forceDelete();
+                $userId = $record->user_id;
+                $otherEmployee = Employee::where('user_id', $userId)->where('id', '!=', $record->id)->first();
+                if (!$otherEmployee) {
+                    $user = $record->user;
+                    if ($user) $user->forceDelete();
+                }
             }
             $record->forceDelete();
         }
