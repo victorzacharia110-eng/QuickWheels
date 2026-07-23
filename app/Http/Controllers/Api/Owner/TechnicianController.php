@@ -375,15 +375,20 @@ class TechnicianController extends Controller
             return response()->json(['success' => false, 'message' => 'Technician has no user account'], 400);
         }
 
-        $user = User::find($technician->user_id);
+        $user = User::withTrashed()->find($technician->user_id);
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'User account not found'], 400);
+        }
+
+        if ($user->trashed()) {
+            $user->restore();
         }
 
         $defaultPassword = Str::lower(str_replace(' ', '', $technician->name));
         $user->update([
             'password' => Hash::make($defaultPassword),
             'must_change_password' => true,
+            'is_active' => true,
         ]);
 
         return response()->json([
