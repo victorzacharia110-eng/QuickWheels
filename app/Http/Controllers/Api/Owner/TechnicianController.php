@@ -112,6 +112,24 @@ class TechnicianController extends Controller
                 $employee->assignVehicle($data['vehicle_id']);
             }
 
+            if (!empty($data['can_drive'])) {
+                Employee::create([
+                    'name' => $data['name'],
+                    'phone' => $data['phone'] ?? null,
+                    'email' => $data['email'],
+                    'address' => $data['address'] ?? null,
+                    'nida_number' => $data['nida_number'] ?? null,
+                    'license_number' => $data['license_number'] ?? null,
+                    'department' => 'Operations',
+                    'position' => 'Driver',
+                    'salary' => $data['salary'] ?? null,
+                    'shift' => $data['shift'] ?? null,
+                    'owner_id' => $ownerId,
+                    'user_id' => $user->id,
+                    'status' => 'active',
+                ]);
+            }
+
             $responseData = $this->formatTechnician($employee->fresh()->load('vehicle'));
             if ($plainPassword) {
                 $responseData['password'] = $plainPassword;
