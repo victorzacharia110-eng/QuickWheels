@@ -33,7 +33,9 @@ class TechnicianController extends Controller
     {
         $ownerId = $request->user()->owner->id;
 
-        $validator = Validator::make($request->all(), [
+        $input = array_map(fn($v) => $v === '' ? null : $v, $request->all());
+
+        $validator = Validator::make($input, [
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email|unique:employees,email',
             'phone' => 'nullable|string|max:20',
@@ -161,7 +163,8 @@ class TechnicianController extends Controller
             return response()->json(['success' => false, 'message' => 'Technician not found'], 404);
         }
 
-        $validator = Validator::make($request->all(), [
+        $input = array_map(fn($v) => $v === '' ? null : $v, $request->all());
+        $validator = Validator::make($input, [
             'name' => 'sometimes|string|max:255',
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255|unique:users,email,' . ($technician->user_id ?? 'NULL') . '|unique:employees,email,' . $id,
