@@ -25,6 +25,7 @@ class Vehicle extends Model
         'model',
         'registration_number',
         'color',
+        'chassis_number',
         'mileage',
         'fuel_type',
         'transmission',
