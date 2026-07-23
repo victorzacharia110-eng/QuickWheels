@@ -117,26 +117,6 @@ class TechnicianController extends Controller
                 $employee->assignVehicle($data['vehicle_id']);
             }
 
-            if (!empty($data['can_drive'])) {
-                Employee::updateOrCreate(
-                    ['email' => $data['email'], 'owner_id' => $ownerId, 'position' => 'Driver'],
-                    [
-                        'name' => $data['name'],
-                        'phone' => $data['phone'] ?? null,
-                        'address' => $data['address'] ?? null,
-                        'nida_number' => $data['nida_number'] ?? null,
-                        'license_number' => $data['license_number'] ?? null,
-                        'department' => 'Operations',
-                        'position' => 'Driver',
-                        'salary' => $data['salary'] ?? null,
-                        'shift' => $data['shift'] ?? null,
-                        'owner_id' => $ownerId,
-                        'user_id' => $user->id,
-                        'status' => 'active',
-                    ]
-                );
-            }
-
             $responseData = $this->formatTechnician($employee->fresh()->load('vehicle'));
             if ($plainPassword) {
                 $responseData['password'] = $plainPassword;
@@ -260,17 +240,13 @@ class TechnicianController extends Controller
 
         $userId = $technician->user_id;
 
-        if ($userId) {
-            Employee::where('user_id', $userId)
-                ->where('owner_id', $ownerId)
-                ->where('position', 'Driver')
-                ->delete();
-        }
-
         $technician->delete();
 
         if ($userId) {
-            User::where('id', $userId)->delete();
+            $user = User::find($userId);
+            if ($user && !$user->can_drive) {
+                User::where('id', $userId)->delete();
+            }
         }
 
         return response()->json([
@@ -294,10 +270,6 @@ class TechnicianController extends Controller
 
         if ($userId) {
             User::withTrashed()->where('id', $userId)->restore();
-            Employee::withTrashed()->where('user_id', $userId)
-                ->where('owner_id', $ownerId)
-                ->where('position', 'Driver')
-                ->restore();
         }
 
         $technician->restore();
@@ -320,13 +292,6 @@ class TechnicianController extends Controller
         }
 
         $userId = $technician->user_id;
-
-        if ($userId) {
-            Employee::withTrashed()->where('user_id', $userId)
-                ->where('owner_id', $ownerId)
-                ->where('position', 'Driver')
-                ->forceDelete();
-        }
 
         $technician->forceDelete();
 

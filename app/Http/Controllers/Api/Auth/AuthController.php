@@ -463,17 +463,6 @@ class AuthController extends Controller
             return response()->json(['success' => true, 'message' => 'Already on ' . $newRole . ' dashboard', 'data' => ['user' => $this->formatUserData($user)]]);
         }
 
-        $hasEmployeeRecord = Employee::withTrashed()->where('user_id', $user->id)->where('position', $newRole === 'employee' ? 'Driver' : 'Technician')->exists();
-
-        if (!$hasEmployeeRecord) {
-            return response()->json(['success' => false, 'message' => 'No ' . $newRole . ' record found for this account'], 404);
-        }
-
-        // Restore soft-deleted employee record when switching
-        Employee::withTrashed()->where('user_id', $user->id)
-            ->where('position', $newRole === 'employee' ? 'Driver' : 'Technician')
-            ->restore();
-
         $user->update(['role' => $newRole]);
 
         return response()->json([
