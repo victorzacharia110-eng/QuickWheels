@@ -226,6 +226,8 @@ class Maintenance extends Model
             'vehicle_name' => $this->vehicle?->name,
             'vehicle_type' => $this->vehicle?->type,
             'vehicle_registration' => $this->vehicle?->registration_number,
+            'vehicle_color' => $this->vehicle?->color,
+            'vehicle_chassis_number' => $this->vehicle?->chassis_number,
             'contract_id' => $this->contract_id,
             'contract_number' => $this->contract?->contract_number,
             'owner_id' => $this->owner_id,
