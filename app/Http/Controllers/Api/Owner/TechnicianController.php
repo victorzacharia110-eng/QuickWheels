@@ -66,6 +66,7 @@ class TechnicianController extends Controller
 
         // Find existing user or create new one
         $user = User::where('email', $data['email'])->first();
+        $existingEmployee = Employee::where('email', $data['email'])->first();
         if ($user) {
             $user->update(['role' => 'technician', 'can_drive' => !empty($data['can_drive'])]);
             $plainPassword = null;
@@ -82,39 +83,37 @@ class TechnicianController extends Controller
         }
 
         try {
-            $employee = Employee::create([
-                'name' => $data['name'],
-                'phone' => $data['phone'] ?? null,
-                'email' => $data['email'],
-                'address' => $data['address'] ?? null,
-                'workshop_address' => $data['workshop_address'] ?? null,
-                'workshop_latitude' => $data['workshop_latitude'] ?? null,
-                'workshop_longitude' => $data['workshop_longitude'] ?? null,
-                'nida_number' => $data['nida_number'] ?? null,
-                'license_number' => $data['license_number'] ?? null,
-                'department' => 'Maintenance',
-                'position' => 'Technician',
-                'salary' => $data['salary'] ?? null,
-                'shift' => $data['shift'] ?? null,
-                'owner_id' => $ownerId,
-                'user_id' => $user->id,
-                'status' => 'active',
-            ]);
-
-            if (!empty($data['vehicle_id'])) {
-                $employee->assignVehicle($data['vehicle_id']);
-            }
-
-            if (!empty($data['can_drive'])) {
-                Employee::create([
+            if ($existingEmployee) {
+                $existingEmployee->update([
+                    'position' => 'Technician',
+                    'department' => 'Maintenance',
+                    'user_id' => $user->id,
+                    'owner_id' => $ownerId,
+                    'status' => 'active',
+                    'name' => $data['name'] ?? $existingEmployee->name,
+                    'phone' => $data['phone'] ?? $existingEmployee->phone,
+                    'workshop_address' => $data['workshop_address'] ?? $existingEmployee->workshop_address,
+                    'workshop_latitude' => $data['workshop_latitude'] ?? $existingEmployee->workshop_latitude,
+                    'workshop_longitude' => $data['workshop_longitude'] ?? $existingEmployee->workshop_longitude,
+                    'nida_number' => $data['nida_number'] ?? $existingEmployee->nida_number,
+                    'license_number' => $data['license_number'] ?? $existingEmployee->license_number,
+                    'salary' => $data['salary'] ?? $existingEmployee->salary,
+                    'shift' => $data['shift'] ?? $existingEmployee->shift,
+                ]);
+                $employee = $existingEmployee;
+            } else {
+                $employee = Employee::create([
                     'name' => $data['name'],
                     'phone' => $data['phone'] ?? null,
                     'email' => $data['email'],
                     'address' => $data['address'] ?? null,
+                    'workshop_address' => $data['workshop_address'] ?? null,
+                    'workshop_latitude' => $data['workshop_latitude'] ?? null,
+                    'workshop_longitude' => $data['workshop_longitude'] ?? null,
                     'nida_number' => $data['nida_number'] ?? null,
                     'license_number' => $data['license_number'] ?? null,
-                    'department' => 'Operations',
-                    'position' => 'Driver',
+                    'department' => 'Maintenance',
+                    'position' => 'Technician',
                     'salary' => $data['salary'] ?? null,
                     'shift' => $data['shift'] ?? null,
                     'owner_id' => $ownerId,
@@ -122,8 +121,50 @@ class TechnicianController extends Controller
                     'status' => 'active',
                 ]);
             }
+
+            if (!empty($data['vehicle_id'])) {
+                $employee->assignVehicle($data['vehicle_id']);
+            }
+
+            if (!empty($data['can_drive'])) {
+                $existingDriver = Employee::where('email', $data['email'])->where('position', 'Driver')->first();
+                if ($existingDriver) {
+                    $existingDriver->update([
+                        'user_id' => $user->id,
+                        'owner_id' => $ownerId,
+                        'status' => 'active',
+                        'name' => $data['name'] ?? $existingDriver->name,
+                        'phone' => $data['phone'] ?? $existingDriver->phone,
+                        'nida_number' => $data['nida_number'] ?? $existingDriver->nida_number,
+                        'license_number' => $data['license_number'] ?? $existingDriver->license_number,
+                        'salary' => $data['salary'] ?? $existingDriver->salary,
+                        'shift' => $data['shift'] ?? $existingDriver->shift,
+                    ]);
+                } else {
+                    $existingDriverByEmail = Employee::where('email', $data['email'])->first();
+                    if (!$existingDriverByEmail) {
+                        Employee::create([
+                            'name' => $data['name'],
+                            'phone' => $data['phone'] ?? null,
+                            'email' => $data['email'],
+                            'address' => $data['address'] ?? null,
+                            'nida_number' => $data['nida_number'] ?? null,
+                            'license_number' => $data['license_number'] ?? null,
+                            'department' => 'Operations',
+                            'position' => 'Driver',
+                            'salary' => $data['salary'] ?? null,
+                            'shift' => $data['shift'] ?? null,
+                            'owner_id' => $ownerId,
+                            'user_id' => $user->id,
+                            'status' => 'active',
+                        ]);
+                    }
+                }
+            }
         } catch (\Exception $e) {
-            $user->delete();
+            if ($user->wasRecentlyCreated) {
+                $user->delete();
+            }
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create technician: ' . $e->getMessage(),
