@@ -324,7 +324,7 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 // ==================== SUPERADMIN ROUTES ====================
-Route::middleware('auth:sanctum')->prefix('superadmin')->group(function () {
+Route::middleware(['auth:sanctum', 'superadmin'])->prefix('superadmin')->group(function () {
     Route::get('/dashboard', [SuperAdminController::class, 'dashboard']);
     Route::get('/owners', [SuperAdminController::class, 'index']);
     Route::get('/owners/{id}', [SuperAdminController::class, 'show']);

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Employee;
+use App\Models\Owner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -75,6 +76,10 @@ class MessageController extends Controller
 
         $ownerId = $sender->owner?->id ?? $receiver->owner?->id;
 
+        if ($sender->role === 'superadmin') {
+            $ownerId = $receiver->owner?->id;
+        }
+
         $message = Message::create([
             'sender_id' => $sender->id,
             'receiver_id' => $request->receiver_id,
@@ -104,6 +109,18 @@ class MessageController extends Controller
         $user = $request->user();
         $role = $user->role;
 
+        if ($role === 'superadmin') {
+            $owners = Owner::with('user')
+                ->get()
+                ->map(fn($o) => [
+                    'id' => $o->user_id,
+                    'name' => $o->user->name,
+                    'role' => 'owner',
+                ]);
+
+            return response()->json(['success' => true, 'data' => $owners]);
+        }
+
         if ($role === 'owner') {
             $employees = Employee::where('owner_id', $user->owner?->id)
                 ->whereHas('user')
@@ -129,7 +146,7 @@ class MessageController extends Controller
             $contacts = collect();
 
             $owner = User::where('role', 'owner')
-                ->whereHas('owner', fn($q) => $q->id = $ownerId)
+                ->whereHas('owner', fn($q) => $q->where('id', $ownerId))
                 ->first();
             if ($owner) {
                 $contacts->push(['id' => $owner->id, 'name' => $owner->name, 'role' => 'owner']);

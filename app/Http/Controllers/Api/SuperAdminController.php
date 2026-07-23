@@ -29,7 +29,7 @@ class SuperAdminController extends Controller
                 'verified_owners' => Owner::where('is_verified', true)->count(),
                 'unverified_owners' => Owner::where('is_verified', false)->count(),
                 'total_employees' => Employee::count(),
-                'total_users' => User::count(),
+                'total_clients' => User::where('role', 'customer')->count(),
                 'total_vehicles' => \App\Models\Vehicle::count(),
                 'recent_owners' => Owner::with('user')
                     ->latest()
@@ -118,6 +118,9 @@ class SuperAdminController extends Controller
             'bank_account_name' => 'nullable|string|max:255',
             'emergency_contact' => 'nullable|string|max:255',
             'emergency_phone' => 'nullable|string|max:20',
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|email|max:255',
+            'phone' => 'sometimes|string|max:20',
         ]);
 
         if ($validator->fails()) {
@@ -128,7 +131,24 @@ class SuperAdminController extends Controller
             ], 422);
         }
 
-        $owner->update($validator->validated());
+        $validated = $validator->validated();
+
+        $ownerFields = collect($validated)->only([
+            'business_name', 'business_license', 'business_address', 'business_phone',
+            'business_email', 'business_website', 'business_description',
+            'tax_id', 'registration_number', 'tin_number', 'vat_number',
+            'bank_name', 'bank_account_number', 'bank_account_name',
+            'emergency_contact', 'emergency_phone',
+        ]);
+
+        if ($ownerFields->isNotEmpty()) {
+            $owner->update($ownerFields->toArray());
+        }
+
+        $userFields = collect($validated)->only(['name', 'email', 'phone']);
+        if ($userFields->isNotEmpty()) {
+            $owner->user->update($userFields->toArray());
+        }
 
         return response()->json([
             'success' => true,
