@@ -64,10 +64,10 @@ class TechnicianController extends Controller
 
         try {
             $existingUser = User::withTrashed()->where('email', $data['email'])->first();
-            $existingEmployee = Employee::where('email', $data['email'])->first();
+            $existingEmployee = Employee::withTrashed()->where('email', $data['email'])->first();
 
             if ($existingEmployee) {
-                $existingEmployee->delete();
+                $existingEmployee->forceDelete();
             }
 
             if ($existingUser) {
