@@ -254,6 +254,14 @@ class TechnicianController extends Controller
         }
 
         $userId = $technician->user_id;
+
+        if ($userId) {
+            Employee::where('user_id', $userId)
+                ->where('owner_id', $ownerId)
+                ->where('position', 'Driver')
+                ->delete();
+        }
+
         $technician->delete();
 
         if ($userId) {
