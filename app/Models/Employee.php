@@ -335,13 +335,15 @@ class Employee extends Model
             throw new \Exception('Vehicle not found');
         }
 
-        // Check if vehicle is already assigned to another employee
+        // Only prevent assignment if another employee of the SAME position has this vehicle.
+        // Drivers and technicians perform different roles on the same vehicle.
         $existing = self::where('vehicle_id', $vehicleId)
             ->where('status', 'active')
+            ->where('position', $this->position)
             ->first();
             
         if ($existing && $existing->id !== $this->id) {
-            throw new \Exception('Vehicle already assigned to another active employee');
+            throw new \Exception('Vehicle already assigned to another active ' . strtolower($this->position));
         }
 
         $this->vehicle_id = $vehicleId;
@@ -365,11 +367,18 @@ class Employee extends Model
         $this->vehicle_name = null;
         $this->save();
 
-        // Update vehicle status back to available
+        // Only set vehicle back to available if no other employee is still assigned to it
         if ($vehicleId) {
-            $vehicle = Vehicle::find($vehicleId);
-            if ($vehicle) {
-                $vehicle->update(['status' => 'available']);
+            $otherAssigned = self::where('vehicle_id', $vehicleId)
+                ->where('id', '!=', $this->id)
+                ->where('status', 'active')
+                ->exists();
+
+            if (!$otherAssigned) {
+                $vehicle = Vehicle::find($vehicleId);
+                if ($vehicle) {
+                    $vehicle->update(['status' => 'available']);
+                }
             }
         }
 
