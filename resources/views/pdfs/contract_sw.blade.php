@@ -288,6 +288,7 @@
                     <br>- Kubeba {{ number_format(500000, 0) }} TZS za kwanza za gharama zozote za ukarabati (makato)
                     <br>- Kuwajibika kwa upungufu wowote usiofunikwa na bima
                 </li>
+                
 
                 <li>
                     <strong>Fidia na Dhima:</strong>

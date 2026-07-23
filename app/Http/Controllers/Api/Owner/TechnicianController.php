@@ -37,7 +37,7 @@ class TechnicianController extends Controller
 
         $validator = Validator::make($input, [
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email|unique:employees,email',
+            'email' => 'required|email|max:255',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
             'workshop_address' => 'nullable|string',
@@ -64,16 +64,22 @@ class TechnicianController extends Controller
         // Default password = technician's name, lowercased, spaces removed
         $plainPassword = Str::lower(str_replace(' ', '', $data['name']));
 
-        // Create User account with technician role
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make($plainPassword),
-            'phone' => $data['phone'] ?? null,
-            'role' => 'technician',
-            'can_drive' => !empty($data['can_drive']),
-            'is_active' => true,
-        ]);
+        // Find existing user or create new one
+        $user = User::where('email', $data['email'])->first();
+        if ($user) {
+            $user->update(['role' => 'technician', 'can_drive' => !empty($data['can_drive'])]);
+            $plainPassword = null;
+        } else {
+            $user = User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($plainPassword),
+                'phone' => $data['phone'] ?? null,
+                'role' => 'technician',
+                'can_drive' => !empty($data['can_drive']),
+                'is_active' => true,
+            ]);
+        }
 
         try {
             $employee = Employee::create([
@@ -125,7 +131,11 @@ class TechnicianController extends Controller
         }
 
         $responseData = $this->formatTechnician($employee->fresh()->load('vehicle'));
-        $responseData['password'] = $plainPassword;
+        if ($plainPassword) {
+            $responseData['password'] = $plainPassword;
+        } else {
+            $responseData['existing_user'] = true;
+        }
 
         return response()->json([
             'success' => true,
