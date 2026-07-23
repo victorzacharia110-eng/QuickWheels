@@ -300,11 +300,11 @@ class SuperAdminController extends Controller
             'deleted_at' => $e->deleted_at,
         ]);
 
-        $deletedUsers = User::onlyTrashed()->whereNotIn('id', function($q) {
-            $q->select('user_id')->from('owners')->withTrashed();
-        })->whereNotIn('id', function($q) {
-            $q->select('user_id')->from('employees')->withTrashed();
-        })->get()->map(fn($u) => [
+        $ownerUserIds = Owner::withTrashed()->pluck('user_id')->filter();
+        $employeeUserIds = Employee::withTrashed()->pluck('user_id')->filter();
+        $linkedUserIds = $ownerUserIds->merge($employeeUserIds)->unique();
+
+        $deletedUsers = User::onlyTrashed()->whereNotIn('id', $linkedUserIds)->get()->map(fn($u) => [
             'id' => $u->id,
             'type' => 'user',
             'name' => $u->name,
@@ -352,9 +352,11 @@ class SuperAdminController extends Controller
         }
 
         if ($type === 'owner') {
-            $record->user()->forceDelete();
+            $user = $record->user;
+            if ($user) $user->forceDelete();
         } elseif ($type === 'employee') {
-            $record->user()->forceDelete();
+            $user = $record->user;
+            if ($user) $user->forceDelete();
         }
 
         $record->forceDelete();
@@ -386,9 +388,11 @@ class SuperAdminController extends Controller
 
         foreach ($records as $record) {
             if ($type === 'owner') {
-                $record->user()->forceDelete();
+                $user = $record->user;
+                if ($user) $user->forceDelete();
             } elseif ($type === 'employee') {
-                $record->user()->forceDelete();
+                $user = $record->user;
+                if ($user) $user->forceDelete();
             }
             $record->forceDelete();
         }
