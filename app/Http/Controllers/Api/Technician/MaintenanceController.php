@@ -82,6 +82,7 @@ class MaintenanceController extends Controller
             'next_service_date' => 'nullable|date',
             'next_service_mileage' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
+            'technician_signature' => 'nullable|string',
             'items' => 'nullable|array',
             'items.*.type' => 'required_with:items|in:part,service',
             'items.*.name' => 'required_with:items|string|max:255',
@@ -112,12 +113,15 @@ class MaintenanceController extends Controller
             'description' => $data['description'] ?? null,
             'diagnosed_issues' => $data['diagnosed_issues'] ?? null,
             'priority' => $data['priority'],
-            'status' => 'pending',
+            'status' => 'submitted',
             'vehicle_mileage' => $data['vehicle_mileage'] ?? null,
             'estimated_cost' => $data['estimated_cost'] ?? 0,
             'next_service_date' => $data['next_service_date'] ?? null,
             'next_service_mileage' => $data['next_service_mileage'] ?? null,
             'notes' => $data['notes'] ?? null,
+            'submitted_at' => now(),
+            'technician_signature' => $data['technician_signature'] ?? null,
+            'technician_signed_at' => !empty($data['technician_signature']) ? now() : null,
         ]);
 
         if (!empty($data['items'])) {
@@ -183,7 +187,7 @@ class MaintenanceController extends Controller
             'description' => 'nullable|string',
             'diagnosed_issues' => 'nullable|string',
             'priority' => 'sometimes|in:low,medium,high,critical',
-            'status' => 'sometimes|in:pending,in_progress,completed,cancelled',
+            'status' => 'sometimes|in:pending,submitted,in_progress,completed,cancelled',
             'vehicle_mileage' => 'nullable|numeric|min:0',
             'estimated_cost' => 'nullable|numeric|min:0',
             'actual_cost' => 'nullable|numeric|min:0',
@@ -269,10 +273,13 @@ class MaintenanceController extends Controller
         $stats = [
             'total' => (clone $allReports)->count(),
             'pending' => (clone $allReports)->where('status', 'pending')->count(),
-            'in_progress' => (clone $allReports)->where('status', 'in_progress')->count(),
+            'submitted' => (clone $allReports)->where('status', 'submitted')->count(),
+            'processing' => (clone $allReports)->where('status', 'processing')->count(),
+            'confirmed' => (clone $allReports)->where('status', 'confirmed')->count(),
+            'verified' => (clone $allReports)->where('status', 'verified')->count(),
             'completed' => (clone $allReports)->where('status', 'completed')->count(),
             'cancelled' => (clone $allReports)->where('status', 'cancelled')->count(),
-            'critical' => (clone $allReports)->where('priority', 'critical')->whereIn('status', ['pending', 'in_progress'])->count(),
+            'critical' => (clone $allReports)->where('priority', 'critical')->whereIn('status', ['submitted', 'viewed', 'processing'])->count(),
         ];
 
         $recentReports = Maintenance::with(['vehicle', 'items'])

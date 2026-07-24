@@ -28,6 +28,15 @@ class Maintenance extends Model
         'next_service_mileage',
         'notes',
         'completed_at',
+        'submitted_at',
+        'viewed_at',
+        'processing_at',
+        'confirmed_at',
+        'verified_at',
+        'technician_signature',
+        'technician_signed_at',
+        'owner_signature',
+        'owner_signed_at',
     ];
 
     protected $casts = [
@@ -37,6 +46,13 @@ class Maintenance extends Model
         'next_service_date' => 'date',
         'next_service_mileage' => 'decimal:2',
         'completed_at' => 'datetime',
+        'submitted_at' => 'datetime',
+        'viewed_at' => 'datetime',
+        'processing_at' => 'datetime',
+        'confirmed_at' => 'datetime',
+        'verified_at' => 'datetime',
+        'technician_signed_at' => 'datetime',
+        'owner_signed_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -85,9 +101,14 @@ class Maintenance extends Model
         return $query->where('status', 'pending');
     }
 
+    public function scopeSubmitted($query)
+    {
+        return $query->where('status', 'submitted');
+    }
+
     public function scopeInProgress($query)
     {
-        return $query->where('status', 'in_progress');
+        return $query->where('status', 'processing');
     }
 
     public function scopeCompleted($query)
@@ -110,13 +131,108 @@ class Maintenance extends Model
         return $query->where('priority', $priority);
     }
 
+    // ==================== WORKFLOW METHODS ====================
+
+    public function submit($technicianSignature = null)
+    {
+        $this->update([
+            'status' => 'submitted',
+            'submitted_at' => now(),
+            'technician_signature' => $technicianSignature,
+            'technician_signed_at' => $technicianSignature ? now() : null,
+        ]);
+        return $this;
+    }
+
+    public function markViewed()
+    {
+        if ($this->status !== 'submitted') return $this;
+        $this->update([
+            'status' => 'viewed',
+            'viewed_at' => now(),
+        ]);
+        return $this;
+    }
+
+    public function autoProcessIfReady()
+    {
+        if ($this->status !== 'viewed' || !$this->viewed_at) return $this;
+        if ($this->viewed_at->diffInMinutes(now()) >= 1) {
+            $this->update([
+                'status' => 'processing',
+                'processing_at' => now(),
+            ]);
+        }
+        return $this;
+    }
+
+    public function confirm()
+    {
+        $validFrom = ['viewed', 'processing'];
+        if (!in_array($this->status, $validFrom)) return $this;
+        $this->update(['confirmed_at' => now()]);
+        if ($this->status === 'viewed') {
+            $this->update(['status' => 'processing', 'processing_at' => $this->processing_at ?? now()]);
+        }
+        $this->update(['status' => 'confirmed', 'confirmed_at' => now()]);
+        return $this;
+    }
+
+    public function verify($ownerSignature = null)
+    {
+        if ($this->status !== 'confirmed') return $this;
+        $this->update([
+            'status' => 'verified',
+            'verified_at' => now(),
+            'owner_signature' => $ownerSignature,
+            'owner_signed_at' => $ownerSignature ? now() : null,
+        ]);
+        return $this;
+    }
+
+    public function autoCompleteIfReady()
+    {
+        if ($this->status !== 'verified' || !$this->verified_at) return $this;
+        if ($this->verified_at->diffInMinutes(now()) >= 2) {
+            $this->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+            ]);
+            $this->items()->where('status', '!=', 'completed')->update(['status' => 'completed']);
+        }
+        return $this;
+    }
+
+    public function processWorkflow()
+    {
+        $this->autoProcessIfReady();
+        $this->autoCompleteIfReady();
+        return $this;
+    }
+
+    public function getWorkflowStep()
+    {
+        $steps = ['submitted', 'viewed', 'processing', 'confirmed', 'verified', 'completed'];
+        $idx = array_search($this->status, $steps);
+        return $idx !== false ? $idx + 1 : 0;
+    }
+
+    public function getWorkflowTotalSteps()
+    {
+        return 6;
+    }
+
     // ==================== ACCESSORS ====================
 
     public function getStatusLabelAttribute()
     {
         $labels = [
             'pending' => 'Pending',
-            'in_progress' => 'In Progress',
+            'submitted' => 'Submitted',
+            'viewed' => 'Viewed',
+            'processing' => 'Processing',
+            'confirmed' => 'Confirmed',
+            'verified' => 'Verified',
             'completed' => 'Completed',
             'cancelled' => 'Cancelled',
         ];
@@ -127,8 +243,12 @@ class Maintenance extends Model
     {
         $colors = [
             'pending' => '#FFD93D',
-            'in_progress' => '#00E5FF',
-            'completed' => '#4ADE80',
+            'submitted' => '#00E5FF',
+            'viewed' => '#818cf8',
+            'processing' => '#fb923c',
+            'confirmed' => '#34d399',
+            'verified' => '#4ADE80',
+            'completed' => '#22c55e',
             'cancelled' => '#ff6b6b',
         ];
         return $colors[$this->status] ?? 'rgba(255,255,255,0.3)';
@@ -217,6 +337,8 @@ class Maintenance extends Model
 
     public function toApiResponse()
     {
+        $this->processWorkflow();
+
         return [
             'id' => $this->id,
             'report_number' => $this->report_number,
@@ -247,6 +369,17 @@ class Maintenance extends Model
             'next_service_mileage' => $this->next_service_mileage,
             'notes' => $this->notes,
             'completed_at' => $this->completed_at?->format('Y-m-d H:i:s'),
+            'submitted_at' => $this->submitted_at?->format('Y-m-d H:i:s'),
+            'viewed_at' => $this->viewed_at?->format('Y-m-d H:i:s'),
+            'processing_at' => $this->processing_at?->format('Y-m-d H:i:s'),
+            'confirmed_at' => $this->confirmed_at?->format('Y-m-d H:i:s'),
+            'verified_at' => $this->verified_at?->format('Y-m-d H:i:s'),
+            'technician_signature' => $this->technician_signature,
+            'technician_signed_at' => $this->technician_signed_at?->format('Y-m-d H:i:s'),
+            'owner_signature' => $this->owner_signature,
+            'owner_signed_at' => $this->owner_signed_at?->format('Y-m-d H:i:s'),
+            'workflow_step' => $this->getWorkflowStep(),
+            'workflow_total_steps' => $this->getWorkflowTotalSteps(),
             'progress' => $this->progress,
             'items' => $this->items->map(fn($item) => $item->toApiResponse()),
             'parts_count' => $this->parts->count(),

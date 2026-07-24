@@ -134,6 +134,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/technicians/{id}/reset-password', [TechnicianController::class, 'resetPassword']);
         Route::get('/technicians/stats', [TechnicianController::class, 'stats']);
         
+        // Maintenance Reports (Owner)
+        Route::get('/maintenance', [\App\Http\Controllers\Api\Owner\MaintenanceController::class, 'index']);
+        Route::get('/maintenance/{id}', [\App\Http\Controllers\Api\Owner\MaintenanceController::class, 'show']);
+        Route::post('/maintenance/{id}/confirm', [\App\Http\Controllers\Api\Owner\MaintenanceController::class, 'confirm']);
+        Route::post('/maintenance/{id}/verify', [\App\Http\Controllers\Api\Owner\MaintenanceController::class, 'verify']);
+        Route::get('/maintenance-stats', [\App\Http\Controllers\Api\Owner\MaintenanceController::class, 'stats']);
+
         // Contracts (Owner)
         Route::get('/contracts', [ContractsContractController::class, 'index']);
         Route::post('/contracts', [ContractsContractController::class, 'store']);
