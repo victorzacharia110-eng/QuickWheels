@@ -18,6 +18,8 @@ use App\Http\Controllers\Api\Technician\MaintenanceController as TechnicianMaint
 use App\Http\Controllers\Api\Owner\TechnicianController;
 use App\Http\Controllers\Api\Owner\DocumentController;
 use App\Http\Controllers\Api\Owner\ContractAnalysisController;
+use App\Http\Controllers\Api\Owner\OwnerReportController;
+use App\Http\Controllers\Api\Technician\TechnicianOwnerReportController;
 use App\Http\Controllers\Api\Payments\PaymentController;
 use App\Http\Controllers\Api\Contracts\ContractController;
 use App\Http\Controllers\Api\Contracts\ContractController as ContractsContractController;
@@ -142,6 +144,23 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/maintenance/{id}/verify', [\App\Http\Controllers\Api\Owner\MaintenanceController::class, 'verify']);
         Route::get('/maintenance-stats', [\App\Http\Controllers\Api\Owner\MaintenanceController::class, 'stats']);
 
+        // Owner Reports
+        Route::get('/reports/technicians', [OwnerReportController::class, 'technicians']);
+        Route::get('/reports/stats', [OwnerReportController::class, 'stats']);
+        Route::get('/reports/{id}', [OwnerReportController::class, 'show']);
+        Route::post('/reports', [OwnerReportController::class, 'store']);
+        Route::put('/reports/{id}', [OwnerReportController::class, 'update']);
+        Route::delete('/reports/{id}', [OwnerReportController::class, 'destroy']);
+        Route::get('/reports', [OwnerReportController::class, 'index']);
+        Route::post('/reports/{id}/answer', [OwnerReportController::class, 'answer']);
+        Route::post('/reports/{id}/review', [OwnerReportController::class, 'review']);
+        Route::post('/reports/{id}/verify', [OwnerReportController::class, 'verify']);
+        Route::post('/reports/{id}/complete', [OwnerReportController::class, 'complete']);
+        Route::post('/reports/{id}/cancel', [OwnerReportController::class, 'cancel']);
+        Route::get('/reports/{id}/export/pdf', [OwnerReportController::class, 'exportPdf']);
+        Route::get('/reports/{id}/export/docx', [OwnerReportController::class, 'exportDocx']);
+        Route::get('/reports/{id}/export/xlsx', [OwnerReportController::class, 'exportXlsx']);
+
         // Contracts (Owner)
         Route::get('/contracts', [ContractsContractController::class, 'index']);
         Route::post('/contracts', [ContractsContractController::class, 'store']);
@@ -247,6 +266,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/maintenance/{id}/items', [TechnicianMaintenanceController::class, 'addItem']);
         Route::put('/maintenance/{maintenanceId}/items/{itemId}', [TechnicianMaintenanceController::class, 'updateItem']);
         Route::delete('/maintenance/{maintenanceId}/items/{itemId}', [TechnicianMaintenanceController::class, 'destroyItem']);
+
+        // Owner Reports (Technician)
+        Route::get('/owner-reports', [TechnicianOwnerReportController::class, 'index']);
+        Route::get('/owner-reports/{id}', [TechnicianOwnerReportController::class, 'show']);
+        Route::post('/owner-reports/{id}/answer', [TechnicianOwnerReportController::class, 'answer']);
+        Route::post('/owner-reports/{id}/submit', [TechnicianOwnerReportController::class, 'submit']);
     });
     
     // ==================== CUSTOMER ROUTES ====================
