@@ -384,18 +384,148 @@ class OwnerReportController extends Controller
 
     private function buildHtml($report)
     {
+        $status = $report->status;
+        $statusColors = [
+            'draft' => '#6C63FF',
+            'pending_technician' => '#3b82f6',
+            'submitted' => '#FFD93D',
+            'reviewed' => '#a855f7',
+            'verified' => '#00C4D4',
+            'completed' => '#4ADE80',
+            'cancelled' => '#ff6b6b',
+        ];
+        $statusColor = $statusColors[$status] ?? '#6C63FF';
+        $statusLabel = ucfirst(str_replace('_', ' ', $status));
+        $vehicleName = $report->vehicle ? "{$report->vehicle->name} ({$report->vehicle->registration})" : 'N/A';
+        $technicianName = $report->technician ? $report->technician->name : 'Unassigned';
+
         $questionsHtml = '';
+        $num = 1;
         foreach ($report->questions ?? [] as $q) {
-            $questionsHtml .= "<tr><td>{$q['question']}</td><td>" . ($q['answer'] ?? 'N/A') . "</td></tr>";
+            $answer = $q['answer'] ?? '<span style="color:#999;font-style:italic">Not answered</span>';
+            $bg = $num % 2 === 0 ? '#f8fafc' : '#ffffff';
+            $questionsHtml .= "<tr style=\"background:{$bg}\">
+                <td style=\"padding:10px 14px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#1e293b;width:5%\">{$num}</td>
+                <td style=\"padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#334155;width:50%\">{$q['question']}</td>
+                <td style=\"padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#0f172a;width:45%\">{$answer}</td>
+            </tr>";
+            $num++;
         }
 
-        return "<!DOCTYPE html><html><head><style>body{font-family:sans-serif}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ccc;padding:8px;text-align:left}</style></head><body>
-        <h1>{$report->title}</h1>
-        <p>{$report->description}</p>
-        <p><strong>Status:</strong> {$report->status}</p>
-        <p><strong>Created:</strong> {$report->created_at}</p>
-        <h2>Questions</h2>
-        <table><tr><th>Question</th><th>Answer</th></tr>{$questionsHtml}</table>
-        </body></html>";
+        $signatureHtml = '';
+        if ($report->technician_signature || $report->owner_signature) {
+            $sigContent = '';
+            if ($report->technician_signature) {
+                $sigDate = $report->technician_signed_at ? $report->technician_signed_at->format('M d, Y, h:i A') : '';
+                $sigContent .= "<div style=\"text-align:center;flex:1\">
+                    <div style=\"font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:8px;font-weight:600\">Technician Signature</div>
+                    <img src=\"{$report->technician_signature}\" style=\"max-height:80px;max-width:200px;border:1px solid #e2e8f0;border-radius:6px;padding:8px;background:#fff\" />
+                    <div style=\"font-size:8px;color:#94a3b8;margin-top:4px\">{$technicianName} &mdash; {$sigDate}</div>
+                </div>";
+            }
+            if ($report->owner_signature) {
+                $sigDate = $report->owner_signed_at ? $report->owner_signed_at->format('M d, Y, h:i A') : '';
+                $sigContent .= "<div style=\"text-align:center;flex:1\">
+                    <div style=\"font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:8px;font-weight:600\">Owner Signature</div>
+                    <img src=\"{$report->owner_signature}\" style=\"max-height:80px;max-width:200px;border:1px solid #e2e8f0;border-radius:6px;padding:8px;background:#fff\" />
+                    <div style=\"font-size:8px;color:#94a3b8;margin-top:4px\">{$sigDate}</div>
+                </div>";
+            }
+            $signatureHtml = "<div style=\"background:#f1f5f9;border-radius:8px;padding:20px;margin-top:24px;border:1px solid #e2e8f0\">
+                <div style=\"font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#00C4D4;font-weight:700;margin-bottom:14px\">Signatures</div>
+                <div style=\"display:flex;gap:20px;justify-content:center\">{$sigContent}</div>
+            </div>";
+        }
+
+        $notesHtml = '';
+        if ($report->technician_notes || $report->owner_notes) {
+            $notesContent = '';
+            if ($report->technician_notes) {
+                $notesContent .= "<div style=\"margin-bottom:8px\"><span style=\"font-weight:700;color:#00C4D4;font-size:9px;text-transform:uppercase;letter-spacing:1px\">Technician:</span> <span style=\"color:#334155\">{$report->technician_notes}</span></div>";
+            }
+            if ($report->owner_notes) {
+                $notesContent .= "<div><span style=\"font-weight:700;color:#4ADE80;font-size:9px;text-transform:uppercase;letter-spacing:1px\">Owner:</span> <span style=\"color:#334155\">{$report->owner_notes}</span></div>";
+            }
+            $notesHtml = "<div style=\"background:#f8fafc;border-radius:8px;padding:16px;margin-top:20px;border:1px solid #e2e8f0\">
+                <div style=\"font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#00C4D4;font-weight:700;margin-bottom:10px\">Notes</div>
+                {$notesContent}
+            </div>";
+        }
+
+        return "<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=\"UTF-8\">
+    <style>
+        @page { margin: 40px 30px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    </style>
+</head>
+<body>
+    <!-- Header Bar -->
+    <div style=\"background:linear-gradient(135deg, #0a0818, #1a1640);padding:24px 30px;border-radius:0 0 12px 12px;margin-bottom:28px\">
+        <div style=\"display:flex;justify-content:space-between;align-items:center\">
+            <div>
+                <div style=\"font-size:18px;font-weight:800;color:#ffffff;letter-spacing:0.5px\">QuickWheels</div>
+                <div style=\"font-size:9px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:2px;margin-top:2px\">Fleet Management Report</div>
+            </div>
+            <div style=\"text-align:right\">
+                <div style=\"display:inline-block;background:{$statusColor};color:#fff;padding:4px 12px;border-radius:20px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px\">{$statusLabel}</div>
+                <div style=\"font-size:8px;color:rgba(255,255,255,0.4);margin-top:4px\">{$report->created_at?->format('M d, Y \\a\\t h:i A')}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Title -->
+    <div style=\"padding:0 10px\">
+        <h1 style=\"font-size:22px;font-weight:800;color:#0a0818;margin-bottom:6px\">{$report->title}</h1>
+        " . ($report->description ? "<p style=\"font-size:11px;color:#64748b;margin-bottom:18px;line-height:1.6\">{$report->description}</p>" : "") . "
+
+        <!-- Info Grid -->
+        <div style=\"display:flex;gap:12px;margin-bottom:24px\">
+            <div style=\"flex:1;background:#f1f5f9;border-radius:8px;padding:14px;border:1px solid #e2e8f0\">
+                <div style=\"font-size:8px;text-transform:uppercase;letter-spacing:1.5px;color:#00C4D4;font-weight:700;margin-bottom:4px\">Vehicle</div>
+                <div style=\"font-size:11px;font-weight:600;color:#0f172a\">{$vehicleName}</div>
+            </div>
+            <div style=\"flex:1;background:#f1f5f9;border-radius:8px;padding:14px;border:1px solid #e2e8f0\">
+                <div style=\"font-size:8px;text-transform:uppercase;letter-spacing:1.5px;color:#00C4D4;font-weight:700;margin-bottom:4px\">Technician</div>
+                <div style=\"font-size:11px;font-weight:600;color:#0f172a\">{$technicianName}</div>
+            </div>
+            <div style=\"flex:1;background:#f1f5f9;border-radius:8px;padding:14px;border:1px solid #e2e8f0\">
+                <div style=\"font-size:8px;text-transform:uppercase;letter-spacing:1.5px;color:#00C4D4;font-weight:700;margin-bottom:4px\">Report ID</div>
+                <div style=\"font-size:11px;font-weight:600;color:#0f172a\">#{$report->id}</div>
+            </div>
+        </div>
+
+        <!-- Questions Table -->
+        <div style=\"margin-bottom:24px\">
+            <div style=\"font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#00C4D4;font-weight:700;margin-bottom:10px\">Questions & Answers</div>
+            <table style=\"width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0\">
+                <thead>
+                    <tr style=\"background:linear-gradient(135deg, #0a0818, #1a1640)\">
+                        <th style=\"padding:10px 14px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#ffffff;font-weight:700;width:5%\">#</th>
+                        <th style=\"padding:10px 14px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#ffffff;font-weight:700;width:50%\">Question</th>
+                        <th style=\"padding:10px 14px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#ffffff;font-weight:700;width:45%\">Answer</th>
+                    </tr>
+                </thead>
+                <tbody>{$questionsHtml}</tbody>
+            </table>
+        </div>
+
+        <!-- Signatures -->
+        {$signatureHtml}
+
+        <!-- Notes -->
+        {$notesHtml}
+
+        <!-- Footer -->
+        <div style=\"margin-top:30px;padding-top:14px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center\">
+            <div style=\"font-size:8px;color:#94a3b8\">Generated by QuickWheels Fleet Management</div>
+            <div style=\"font-size:8px;color:#94a3b8\">{$report->created_at?->format('M d, Y \\a\\t h:i A')}</div>
+        </div>
+    </div>
+</body>
+</html>";
     }
 }
