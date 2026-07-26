@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Employee\MaintenanceController;
 use App\Http\Controllers\Api\Employee\EmployeeDashboardController;
 use App\Http\Controllers\Api\Employee\BookingController as EmployeeBookingController;
 use App\Http\Controllers\Api\Employee\VehicleController as EmployeeVehicleController;
+use App\Http\Controllers\Api\Employee\RideRequestController;
 use App\Http\Controllers\Api\Technician\MaintenanceController as TechnicianMaintenanceController;
 use App\Http\Controllers\Api\Owner\TechnicianController;
 use App\Http\Controllers\Api\Owner\DocumentController;
@@ -215,6 +216,15 @@ Route::middleware('auth:sanctum')->group(function () {
         // Customers
         Route::get('/customers', [App\Http\Controllers\Api\Employee\CustomerController::class, 'index']);
         Route::get('/customers/{id}', [App\Http\Controllers\Api\Employee\CustomerController::class, 'show']);
+
+        // Ride Requests
+        Route::get('/ride-requests', [RideRequestController::class, 'index']);
+        Route::get('/ride-requests/history', [RideRequestController::class, 'history']);
+        Route::post('/ride-requests/{id}/accept', [RideRequestController::class, 'accept']);
+        Route::post('/ride-requests/{id}/en-route', [RideRequestController::class, 'enRoute']);
+        Route::post('/ride-requests/{id}/start', [RideRequestController::class, 'start']);
+        Route::post('/ride-requests/{id}/complete', [RideRequestController::class, 'complete']);
+        Route::post('/ride-requests/{id}/cancel', [RideRequestController::class, 'cancel']);
     });
     
     // ==================== TECHNICIAN ROUTES ====================
