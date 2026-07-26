@@ -36,6 +36,8 @@ class BookingController extends Controller
             ->where('is_active', true)
             ->first();
 
+        $scheduledAt = $validated['scheduled_at'] ?? null;
+
         $booking = Booking::create([
             'customer_id' => $user->id,
             'vehicle_id' => $vehicle?->id,
@@ -43,9 +45,10 @@ class BookingController extends Controller
             'assigned_driver_id' => $vehicle?->employees->where('position', 'Driver')->first()?->id,
             'pickup_location' => $validated['pickup_location'],
             'destination' => $validated['destination'],
-            'scheduled_at' => $validated['scheduled_at'] ?? now(),
-            'start_date' => $validated['scheduled_at'] ? date('Y-m-d', strtotime($validated['scheduled_at'])) : today(),
-            'pickup_time' => $validated['scheduled_at'] ? date('H:i:s', strtotime($validated['scheduled_at'])) : now()->toTimeString(),
+            'scheduled_at' => $scheduledAt,
+            'start_date' => $scheduledAt ? date('Y-m-d', strtotime($scheduledAt)) : today(),
+            'end_date' => $scheduledAt ? date('Y-m-d', strtotime($scheduledAt)) : today(),
+            'pickup_time' => $scheduledAt ? date('H:i:s', strtotime($scheduledAt)) : now()->toTimeString(),
             'notes' => $validated['notes'] ?? null,
             'status' => 'requested',
             'driver_name' => $user->name,
