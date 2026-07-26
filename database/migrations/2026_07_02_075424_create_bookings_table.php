@@ -16,8 +16,8 @@ return new class extends Migration
             
             // Relationships
             $table->foreignId('customer_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('vehicle_id')->constrained()->onDelete('cascade');
-            $table->foreignId('owner_id')->constrained()->onDelete('cascade');
+            $table->foreignId('vehicle_id')->nullable()->constrained()->onDelete('cascade');
+            $table->foreignId('owner_id')->nullable()->constrained()->onDelete('cascade');
             $table->foreignId('employee_id')->nullable()->constrained('employees')->onDelete('set null');
             
             // Dates & Times

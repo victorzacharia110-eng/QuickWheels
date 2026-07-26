@@ -25,38 +25,39 @@ class BookingController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'vehicle_id' => 'required|exists:vehicles,id',
             'pickup_location' => 'required|string|max:255',
-            'return_location' => 'nullable|string|max:255',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'pickup_time' => 'nullable',
-            'return_time' => 'nullable',
-            'notes' => 'nullable|string',
+            'destination' => 'required|string|max:255',
+            'scheduled_at' => 'nullable|date|after_or_equal:now',
+            'notes' => 'nullable|string|max:500',
         ]);
 
-        $vehicle = Vehicle::findOrFail($validated['vehicle_id']);
+        $user = $request->user();
+        $vehicle = Vehicle::whereIn('status', ['available', 'assigned'])
+            ->where('is_active', true)
+            ->first();
 
         $booking = Booking::create([
-            'customer_id' => $request->user()->id,
-            'vehicle_id' => $validated['vehicle_id'],
-            'owner_id' => $vehicle->owner_id,
+            'customer_id' => $user->id,
+            'vehicle_id' => $vehicle?->id,
+            'owner_id' => $vehicle?->owner_id,
+            'assigned_driver_id' => $vehicle?->employees->where('position', 'Driver')->first()?->id,
             'pickup_location' => $validated['pickup_location'],
-            'return_location' => $validated['return_location'] ?? $validated['pickup_location'],
-            'start_date' => $validated['start_date'],
-            'end_date' => $validated['end_date'],
-            'pickup_time' => $validated['pickup_time'] ?? null,
-            'return_time' => $validated['return_time'] ?? null,
+            'destination' => $validated['destination'],
+            'scheduled_at' => $validated['scheduled_at'] ?? now(),
+            'start_date' => $validated['scheduled_at'] ? date('Y-m-d', strtotime($validated['scheduled_at'])) : today(),
+            'pickup_time' => $validated['scheduled_at'] ? date('H:i:s', strtotime($validated['scheduled_at'])) : now()->toTimeString(),
             'notes' => $validated['notes'] ?? null,
-            'status' => 'pending',
-            'driver_name' => $request->user()->name,
-            'driver_phone' => $request->user()->phone,
+            'status' => 'requested',
+            'driver_name' => $user->name,
+            'driver_phone' => $user->phone,
         ]);
+
+        $booking->load(['vehicle', 'assignedDriver', 'owner']);
 
         return response()->json([
             'success' => true,
-            'message' => 'Booking created successfully',
-            'data' => $booking->fresh()->load('vehicle')->toApiResponse(),
+            'message' => 'Ride requested successfully',
+            'data' => $booking->toApiResponse(),
         ], 201);
     }
 
