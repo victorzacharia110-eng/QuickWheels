@@ -336,7 +336,7 @@ class OwnerReportController extends Controller
 
         if ($format === 'pdf') {
             $html = $this->buildHtml($report);
-            $pdf = \Barryvdh\DomPDF\PDF::loadHtml($html);
+            $pdf = app(\Barryvdh\DomPDF\PDF::class)->loadHtml($html);
             $pdf->setPaper('a4');
             return $pdf->download("report-{$report->id}.pdf");
         }
