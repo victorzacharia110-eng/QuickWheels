@@ -11,27 +11,22 @@ class Booking extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        // Booking Identification
         'booking_number',
-        
-        // Relationships
         'customer_id',
         'vehicle_id',
         'owner_id',
         'employee_id',
-        
-        // Dates & Times
+        'assigned_driver_id',
         'start_date',
         'end_date',
         'pickup_time',
         'return_time',
-        
-        // Locations
+        'scheduled_at',
         'pickup_location',
+        'destination',
         'return_location',
         'delivery_address',
-        
-        // Financials
+        'fare',
         'total_amount',
         'deposit_paid',
         'balance',
@@ -43,29 +38,22 @@ class Booking extends Model
         'late_fee',
         'cleaning_fee',
         'insurance_fee',
-        
-        // Status
         'status',
-        
-        // Additional Info
         'notes',
         'cancellation_reason',
         'cancelled_at',
         'completed_at',
-        
-        // Driver Info
+        'accepted_at',
+        'en_route_at',
+        'started_at',
         'driver_name',
         'driver_license',
         'driver_age',
         'driver_phone',
-        
-        // Vehicle Options
         'is_driver_required',
         'is_delivery_required',
         'is_insurance_included',
         'is_contract_signed',
-        
-        // Payment Info
         'payment_method',
         'payment_status',
         'transaction_id',
@@ -76,6 +64,11 @@ class Booking extends Model
         'end_date' => 'date',
         'pickup_time' => 'datetime',
         'return_time' => 'datetime',
+        'scheduled_at' => 'datetime',
+        'accepted_at' => 'datetime',
+        'en_route_at' => 'datetime',
+        'started_at' => 'datetime',
+        'fare' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'deposit_paid' => 'decimal:2',
         'balance' => 'decimal:2',
@@ -126,6 +119,14 @@ class Booking extends Model
     public function employee()
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    /**
+     * Get the assigned driver (employee) for this ride.
+     */
+    public function assignedDriver()
+    {
+        return $this->belongsTo(Employee::class, 'assigned_driver_id');
     }
 
     /**
@@ -280,9 +281,13 @@ class Booking extends Model
     public function getStatusLabelAttribute()
     {
         $labels = [
+            'requested' => 'Requested',
             'pending' => 'Pending',
+            'accepted' => 'Accepted',
             'confirmed' => 'Confirmed',
+            'en_route' => 'Driver En Route',
             'active' => 'Active',
+            'in_progress' => 'In Progress',
             'completed' => 'Completed',
             'cancelled' => 'Cancelled',
         ];
@@ -295,10 +300,14 @@ class Booking extends Model
     public function getStatusColorAttribute()
     {
         $colors = [
+            'requested' => '#FFD93D',
             'pending' => '#FFD93D',
+            'accepted' => '#22d3ee',
             'confirmed' => '#4ADE80',
+            'en_route' => '#6366f1',
             'active' => '#00E5FF',
-            'completed' => '#6366f1',
+            'in_progress' => '#00E5FF',
+            'completed' => '#4ade80',
             'cancelled' => '#ff6b6b',
         ];
         return $colors[$this->status] ?? 'rgba(255,255,255,0.3)';
@@ -409,7 +418,10 @@ class Booking extends Model
                 $booking->booking_number = $booking->generateBookingNumber();
             }
             if (empty($booking->status)) {
-                $booking->status = 'pending';
+                $booking->status = 'requested';
+            }
+            if (empty($booking->start_date)) {
+                $booking->start_date = $booking->scheduled_at?->toDateString() ?? today();
             }
             if (empty($booking->balance)) {
                 $booking->balance = $booking->total_amount - ($booking->deposit_paid ?? 0);
@@ -466,17 +478,18 @@ class Booking extends Model
     }
 
     /**
-     * Approve/confirm the booking.
+     * Accept a ride request (driver accepts).
      */
-    public function confirm($employeeId = null)
+    public function accept($driverId = null)
     {
-        if ($this->status !== 'pending') {
-            throw new \Exception('Only pending bookings can be confirmed');
+        if (!in_array($this->status, ['requested', 'pending'])) {
+            throw new \Exception('Only requested bookings can be accepted');
         }
 
-        $this->status = 'confirmed';
-        if ($employeeId) {
-            $this->employee_id = $employeeId;
+        $this->status = 'accepted';
+        $this->accepted_at = now();
+        if ($driverId) {
+            $this->assigned_driver_id = $driverId;
         }
         $this->save();
 
@@ -484,36 +497,79 @@ class Booking extends Model
     }
 
     /**
-     * Start the booking (mark as active).
+     * Mark driver as en route to pickup.
      */
-    public function start()
+    public function markEnRoute()
     {
-        if ($this->status !== 'confirmed') {
-            throw new \Exception('Only confirmed bookings can be started');
+        if ($this->status !== 'accepted') {
+            throw new \Exception('Only accepted bookings can be marked en route');
         }
 
-        $this->status = 'active';
-        $this->vehicle->update(['status' => 'rented']);
+        $this->status = 'en_route';
+        $this->en_route_at = now();
         $this->save();
 
         return $this;
     }
 
     /**
-     * Complete the booking.
+     * Start the ride (picked up passenger).
      */
-    public function complete()
+    public function startRide()
     {
-        if (!in_array($this->status, ['confirmed', 'active'])) {
-            throw new \Exception('Only confirmed/active bookings can be completed');
+        if ($this->status !== 'en_route') {
+            throw new \Exception('Only en_route bookings can be started');
+        }
+
+        $this->status = 'in_progress';
+        $this->started_at = now();
+        $this->save();
+
+        return $this;
+    }
+
+    /**
+     * Complete the ride.
+     */
+    public function completeRide($fare = null)
+    {
+        if (!in_array($this->status, ['in_progress', 'en_route', 'active'])) {
+            throw new \Exception('Only in-progress rides can be completed');
         }
 
         $this->status = 'completed';
         $this->completed_at = now();
-        $this->vehicle->update(['status' => 'available']);
+        if ($fare !== null) {
+            $this->fare = $fare;
+            $this->total_amount = $fare;
+        }
         $this->save();
 
         return $this;
+    }
+
+    /**
+     * Approve/confirm the booking (legacy).
+     */
+    public function confirm($employeeId = null)
+    {
+        return $this->accept($employeeId);
+    }
+
+    /**
+     * Start the booking (legacy).
+     */
+    public function start()
+    {
+        return $this->startRide();
+    }
+
+    /**
+     * Complete the booking (legacy).
+     */
+    public function complete()
+    {
+        return $this->completeRide();
     }
 
     /**
@@ -521,19 +577,13 @@ class Booking extends Model
      */
     public function cancel($reason = null)
     {
-        if (!in_array($this->status, ['pending', 'confirmed'])) {
-            throw new \Exception('Only pending/confirmed bookings can be cancelled');
+        if (in_array($this->status, ['completed', 'cancelled'])) {
+            throw new \Exception('Completed/cancelled bookings cannot be cancelled');
         }
 
         $this->status = 'cancelled';
         $this->cancelled_at = now();
         $this->cancellation_reason = $reason;
-        
-        // Make vehicle available if it was rented
-        if ($this->vehicle->status === 'rented') {
-            $this->vehicle->update(['status' => 'available']);
-        }
-        
         $this->save();
 
         return $this;
@@ -677,16 +727,22 @@ class Booking extends Model
             'owner_name' => $this->owner?->business_name,
             'employee_id' => $this->employee_id,
             'employee_name' => $this->employee?->name,
+            'assigned_driver_id' => $this->assigned_driver_id,
+            'assigned_driver_name' => $this->assignedDriver?->name,
+            'assigned_driver_phone' => $this->assignedDriver?->phone,
             'start_date' => $this->start_date?->toDateString(),
             'end_date' => $this->end_date?->toDateString(),
             'pickup_time' => $this->pickup_time?->toTimeString(),
+            'scheduled_at' => $this->scheduled_at?->toDateTimeString(),
             'return_time' => $this->return_time?->toTimeString(),
             'duration' => $this->duration,
             'duration_label' => $this->duration_label,
             'days_remaining' => $this->days_remaining,
             'is_overdue' => $this->is_overdue,
             'pickup_location' => $this->pickup_location,
+            'destination' => $this->destination,
             'return_location' => $this->return_location,
+            'fare' => $this->fare,
             'total_amount' => $this->total_amount,
             'total_amount_formatted' => $this->total_amount_formatted,
             'deposit_paid' => $this->deposit_paid,
@@ -709,6 +765,9 @@ class Booking extends Model
             'cancellation_reason' => $this->cancellation_reason,
             'cancelled_at' => $this->cancelled_at?->toDateTimeString(),
             'completed_at' => $this->completed_at?->toDateTimeString(),
+            'accepted_at' => $this->accepted_at?->toDateTimeString(),
+            'en_route_at' => $this->en_route_at?->toDateTimeString(),
+            'started_at' => $this->started_at?->toDateTimeString(),
             'driver_name' => $this->driver_name,
             'driver_license' => $this->driver_license,
             'driver_age' => $this->driver_age,
