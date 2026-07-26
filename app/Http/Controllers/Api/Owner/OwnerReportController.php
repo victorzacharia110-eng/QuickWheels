@@ -95,6 +95,13 @@ class OwnerReportController extends Controller
 
         $ownerId = $request->user()->owner->id;
 
+        $questions = array_map(function ($q, $i) {
+            if (!isset($q['id'])) $q['id'] = $i + 1;
+            if (!isset($q['type'])) $q['type'] = 'text';
+            if (!isset($q['required'])) $q['required'] = false;
+            return $q;
+        }, $validated['questions'], array_keys($validated['questions']));
+
         $report = OwnerReport::create([
             'owner_id' => $ownerId,
             'vehicle_id' => $validated['vehicle_id'] ?? null,
@@ -102,10 +109,8 @@ class OwnerReportController extends Controller
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'status' => $validated['status'] ?? 'draft',
+            'questions' => $questions,
         ]);
-
-        $report->setQuestions($validated['questions']);
-        $report->refresh();
 
         return response()->json([
             'success' => true,
