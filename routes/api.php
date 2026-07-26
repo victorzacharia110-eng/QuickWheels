@@ -57,6 +57,11 @@ Route::prefix('auth')->group(function () {
 Route::get('/vehicles', [VehicleController::class, 'index']);
 Route::get('/vehicles/{id}', [VehicleController::class, 'show']);
 
+// ==================== PUBLIC BUSINESS ROUTES ====================
+Route::get('/public/businesses', [App\Http\Controllers\Api\PublicController::class, 'businesses']);
+Route::get('/public/businesses/{slug}', [App\Http\Controllers\Api\PublicController::class, 'business']);
+Route::get('/public/businesses/{slug}/vehicles', [App\Http\Controllers\Api\PublicController::class, 'businessVehicles']);
+
 // ==================== PROTECTED ROUTES (Auth Required) ====================
 Route::middleware('auth:sanctum')->group(function () {
     
